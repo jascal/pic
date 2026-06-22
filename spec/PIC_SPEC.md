@@ -237,12 +237,41 @@ every margin/decode theorem of §5 proved tropically transfers verbatim to the o
 
 ---
 
-## 4. Frame vs decode separation
+## 4. The three roles: encode, frame, decode
 
-The central structural distinction. Every PIC quantity is either **frame-side** (a function of `{U_v}`
-alone — intrinsic geometry, no data, no targets) or **decode-side** (a function of the aggregate `L`
-and a target — evaluated in the chosen semiring). `pil` exploits exactly this split: it can move a
-frame-side objective without touching decode semantics, and vice versa.
+PIC *is* a sandwich — there are **three** roles, not two, and the frame is the filling, not a bread:
+
+```
+        ENCODE                         FRAME                        DECODE
+  input ─▶ residual r = Σ_j d_j ─▶ ⟨·, U_v⟩ geometry of {U_v} ─▶ logits L(v), argmax/softmax
+  (sources WRITE the residual)   (shared dictionary both meet at)  (READ the residual out)
+```
+
+- **Encode (the generator side).** How the residual gets *written*: the sources `d_j` and the rules
+  that produce them. PIC does **not** model the encoder's internal computation (the attention/MLP that
+  builds each `d_j`) — that is taken as **given** (the observed per-block writes; the irreducible
+  forge-tax compute). What PIC *does* bound is the encoder's **output**: how many independent sources
+  can write (**routing rank** §5.2, `≤ min(M,d)`) and what interference overpacking forces
+  (**routing Welch** §5.3). This is the `⊗`/variable side of the polynomial and **the binding side**.
+- **Frame.** The shared dictionary geometry `{U_v}` — what both encode and decode meet at. Its intrinsic
+  quantities (Gram coherence, frame potential, Welch floor) and its **decode capacity** (§5.1).
+- **Decode (the read-out).** The aggregate `L(v) = ⟨r, U_v⟩ + b_v`, evaluated in the chosen semiring:
+  margins, participation ratio, multiplicity `μ_t`.
+
+**So why does PIC look like only "frame vs decode"?** Because that two-way cut (below) is an
+*operational* split for **analysis and learning**, not the whole architecture:
+- the **encode is observed, not modelled** — in frozen analysis the `d_j` are read straight off the
+  real forward pass (`fieldrun --pil-dump`), so there is nothing to *separate*: encode is an input. PIC
+  only *counts* the encoder (rank/Welch), it does not *re-derive* it. This is principled, not a gap: it
+  is the empirical **mass ≠ causation** result (§5 guardrail) — the read-out is sparse and faithful (so
+  PIC models it cleanly), while *building* the residual is the whole causal stack (so PIC leaves it as
+  the un-modelled forge-tax).
+- the cut that **`pil` exploits** is then: every remaining PIC quantity is either **frame-side** (a
+  function of `{U_v}` alone — intrinsic, label-free) or **decode-side** (a function of `L` and a target —
+  evaluated in the semiring). `pil` moves a frame-side objective without touching decode semantics, and
+  vice versa. A learner that *also* trained the encoder (the `d_j` generators) would be working the
+  **encode/generator side** — exactly the routing-rank/Welch regime, and the place a future PIC could add
+  an explicit encode model.
 
 ### 4.1 Decode-side quantities (data-dependent, semiring-evaluated)
 
@@ -283,8 +312,9 @@ over-complete frame `nₚ > d`); the ratio `FP / W` reports frame quality, `= 1`
 
 All statements below are **kernel-proved in i-orca** at the cited file. They split into the two sides
 of a single **two-sided packing** picture: the **frame side** bounds how many tokens a geometry can
-decode; the **generator side** bounds how many rules can write the logits and what interference that
-forces.
+decode; the **generator side** — i.e. the **encode side** of §4 — bounds how many rules can write the
+logits and what interference that forces. (The "encode" and "generator" sides are the same thing: the
+production of the residual. PIC counts it here; it does not model its mechanism.)
 
 ### 5.0 The duality that organises them *(native schema)*
 
