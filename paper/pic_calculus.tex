@@ -161,9 +161,22 @@ general & deformed & $T\log\sum e^{\cdot/T}$ & temperature-controlled decoding \
 
 The two ends are joined by \emph{Maslov dequantization}: the probabilistic calculus (the model in
 operation) and the geometric calculus (the proofs) are limits of one deformation, not different objects.
-The tropical end is a genuine semiring; in particular the distributive law
-$a\otimes(b\oplus c)=(a\otimes b)\oplus(a\otimes c)$ holds \proved{}, the law that rewrites a
-sum-of-maxes (a ReLU stack) as a max-of-sums (a tropical polynomial).
+
+\begin{definition}[The complete semiring]\label{def:semiring}
+For each $T\ge0$, $R_T=(R,\oplus_T,\otimes,\mathbf{0},\mathbf{1})$ has carrier $R=\RR\cup\{-\infty\}$,
+sum $a\oplus_T b=T\log(e^{a/T}+e^{b/T})$ with $\oplus_0:=\max$, product $a\otimes b=a+b$, sum identity
+$\mathbf{0}=-\infty$, and product identity $\mathbf{1}=0$. It satisfies the semiring axioms: $(R,\oplus_T)$
+is a commutative monoid with identity $-\infty$; $(R,\otimes)$ is a commutative monoid with identity $0$;
+$\otimes$ distributes over $\oplus_T$; and $\mathbf{0}$ annihilates ($-\infty\otimes a=-\infty$). It is
+commutative, and idempotent exactly at $T=0$ ($a\oplus_0 a=a$ but $a\oplus_1 a=a+\log 2$)---the algebraic
+difference between geometry and probability.
+\end{definition}
+
+\noindent The distributive law $a\otimes(b\oplus c)=(a\otimes b)\oplus(a\otimes c)$ is the load-bearing
+one: it rewrites a sum-of-maxes (a ReLU stack) as a max-of-sums (a tropical polynomial). It and the two
+monoid laws are machine-checked at $T=0$ \proved{} (\texttt{TropicalSemiring.thy}); for general $T$ the
+distributive law is the log-domain identity
+$a+T\log(e^{b/T}+e^{c/T})=T\log(e^{(a+b)/T}+e^{(a+c)/T})$.
 
 \section{PIC as a calculus}\label{sec:calculus}
 
@@ -363,17 +376,35 @@ on frozen sources. The win that exists is \emph{retraining the frame/subspace}--
 boundary---rather than fitting an encoder into a frozen dictionary, consistent with the verification-side
 result that frozen compression hits a $\Theta(d)$ floor a rank-bottlenecked retrained update clears.
 
+\paragraph{The logic-programming reading.} Structurally PIC is a semiring-weighted logic program: the
+turnstile $P\vdash_\gamma v$ is a weighted rule (body coalition derives head proposition with margin
+$\gamma$), the answer is the least fixpoint of the immediate-consequence operator
+$T_P(I)=\{v:\exists P\subseteq I,\ P\vdash v\}$ evaluated in $R_T$, and the query is the decode. The
+semiring chooses the logic---$T=0$ is shortest-path/Viterbi (min-cost) logic, $T=1$ is probabilistic
+(ProbLog-style) logic, Boolean is classical Datalog---with PIC's one native move that the fact weights are
+\emph{derived from geometry}, $j\triangleright v=\inner{d_j}{U_v}$, rather than given. The demand-closure
+theorem (\S\ref{sec:thm}, $\operatorname{lfp}(\operatorname{restrict}T\,D)=\operatorname{lfp}T\cap D$
+\proved{}) is exactly the soundness of the magic-sets/demand optimization for such a language, and the
+margin certificate bounds how far a clause weight may drift before an answer flips. The frame/decode
+separation is its type discipline: frame-side clauses (what overlaps what) plus decode-side queries
+(margins, multiplicity).
+
 \section{An empirical parameter the proofs do not pin down}\label{sec:tau}
 
 The packing exponent that binds in practice is an effective rank $\tau^\star$, not the ambient $d$. A
-natural conjecture, $\tau^\star\approx\min(e^{H},d)$ (effective output support sets the rank), is only
-partly borne out. Measured on a Pythia scale ladder and Qwen models via the analysis seam, the effective
-decode-block count \emph{tracks capacity} (block count, hidden width, depth) and \emph{anti-correlates}
-with $e^{H}$ across scale: larger, more confident models use \emph{more} effective blocks, not fewer. A
-genuine but modest \emph{within-model} effect survives---higher-entropy tokens use somewhat more blocks.
-So $\tau^\star$ is real but capacity-bound rather than entropy-bound; its functional form is \open{}. We
-record this as the cleanest current example of the discipline the tags enforce: a plausible law,
-measured, and reported by what the data support rather than by what would have been tidy.
+natural conjecture, $\tau^\star\approx\min(e^{H},d)$ (effective output support sets the rank), is
+\emph{refuted in the cross-model direction}. Measured on a seven-model sweep (Pythia 70m--1.4b, Qwen
+0.5B/1.5B) via the analysis seam, the architecture-fair effective decode-block count $r_{\mathrm{eff}}$
+\emph{anti-correlates} with $e^{H}$ (Pearson $-0.71$) and \emph{tracks the block count} $n_b=2L+1$ (Pearson
+$+0.75$), depth, and width: larger, more confident models use \emph{more} effective blocks, not fewer. The
+clean dissociation is that Pythia-1b (16 layers, \emph{more} parameters) uses fewer effective blocks than
+Pythia-410m (24 layers, \emph{fewer} parameters), so it is depth/$n_b$---not parameter count and not
+entropy---that sets $r_{\mathrm{eff}}\approx(0.4\text{--}0.5)\,n_b$ within an architecture. A genuine but
+modest \emph{within-model} effect survives (higher-entropy tokens use somewhat more blocks; Spearman
+$\approx0.3$--$0.4$ in capable models). So $\tau^\star$ is real but capacity/depth-bound rather than
+entropy-bound; its functional form is \open{}. We record this as the cleanest current example of the
+discipline the tags enforce: a plausible law, measured, and reported by what the data support rather than
+by what would have been tidy.
 
 \section*{Provenance of claims}
 \proved{} statements are machine-checked in the i-orca Isabelle corpus

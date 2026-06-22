@@ -22,11 +22,12 @@ analysis already runs in and the existing proofs already quantify over.
 A transformer's next-token decision is a **semiring-weighted incidence calculus over a continuous
 inner-product geometry**. Propositions (tokens) are points `U_v` in a residual space `H = ℝ^d`;
 sources (DLA blocks, or learned rules) are vectors `d_j`; the incidence of source `j` on proposition
-`v` is the inner product `c_j(v) = ⟨d_j, U_v⟩`; and the decision aggregates incidences over sources
-through a semiring `⊕` selected by a temperature `T`. At `T = 1` the semiring is the log-semiring and
-PIC **is** the transformer forward pass (softmax over summed logits); at `T → 0` it is the tropical
-(max-plus) semiring and PIC is the geometry of margins, Laguerre power diagrams, and the head/tail
-decode certificate. The calculus cleanly **separates the frame** (the intrinsic geometry of `{U_v}`:
+`v` is the inner product `c_j(v) = ⟨d_j, U_v⟩`. Sources of one token combine by `⊗` (= real `+`) into a
+**monomial** `L(v) = Σ_j c_j(v) + b_v`; the **tokens** then combine by a temperature-`T` semiring sum
+`⊕_T` into the decode **polynomial** `Z_T = ⊕_{T,v} L(v)`. At `T = 1` `⊕_T` is logsumexp and PIC **is**
+the transformer forward pass (softmax over the summed logits); at `T → 0` it is `max` and PIC is the
+geometry of margins, Laguerre power diagrams, and the head/tail decode certificate — and (§3.1) the
+decoded token is the **same** at every `T`. The calculus cleanly **separates the frame** (the intrinsic geometry of `{U_v}`:
 Gram coherence, Welch floor, packing capacity) **from the decode** (margins, participation ratio,
 multiplicity `μ_t`, evaluated in the chosen semiring). That separation is the load-bearing move: the
 **analysis** repos read the decode side off a frozen frame, while the **learning** repo (`pil`) holds
@@ -95,8 +96,29 @@ as monomials — see §2 and the temperature-invariance lemma §3.1.)
 ## 2. The semiring family (the calculus parameter)
 
 PIC is parameterised by a **temperature** `T ≥ 0` selecting a commutative semiring
-`(R_T, ⊕_T, ⊗, 0, 1)` with the **same** product `⊗ = +` (real addition; incidences along a coalition
-*add*) and a `T`-dependent sum:
+`R_T = (R, ⊕_T, ⊗, 𝟘, 𝟙)`. The full tuple (the complete semiring, not just the operations):
+
+| component | value | role |
+|-----------|-------|------|
+| carrier `R` | `ℝ ∪ {−∞}` (log-domain scores) | incidence / score values |
+| sum `⊕_T` | `a ⊕_T b = T·log(e^{a/T} + e^{b/T})`, with `⊕_0 := max` | combine **alternatives** (tokens) |
+| product `⊗` | `a ⊗ b = a + b` (real addition), **`T`-independent** | combine **sources** within a token |
+| sum identity `𝟘` | `−∞` | "no alternative" (`a ⊕_T −∞ = a`) |
+| product identity `𝟙` | `0` | "empty coalition" (`a ⊗ 0 = a`) |
+
+**Semiring axioms** (all hold for every `T ≥ 0`; the tropical case `T = 0` is the one machine-checked in
+`TropicalSemiring.thy`):
+1. `(R, ⊕_T, 𝟘)` is a commutative monoid — `⊕_T` associative, commutative, identity `−∞`. *(proved, T=0)*
+2. `(R, ⊗, 𝟙)` is a commutative monoid — `⊗ = +` associative, commutative, identity `0`. *(proved, T=0)*
+3. **Distributivity** `a ⊗ (b ⊕_T c) = (a ⊗ b) ⊕_T (a ⊗ c)` — addition distributes over the `T`-sum.
+   *(proved, T=0: `tmul_tadd_distrib_left`; for general `T` it is the log-domain identity
+   `a + T\log(e^{b/T}+e^{c/T}) = T\log(e^{(a+b)/T}+e^{(a+c)/T})`.)* This is the load-bearing law: it
+   rewrites a sum-of-maxes (a ReLU stack) as a max-of-sums (a tropical polynomial).
+4. **Annihilation** `𝟘 ⊗ a = 𝟘` — `−∞ + a = −∞` (an absent alternative stays absent under combination).
+
+`R_T` is **commutative** and (at `T=0`) **idempotent** (`a ⊕_0 a = a`); idempotency is lost for `T>0`
+(`a ⊕_1 a = a + log 2`), which is exactly the difference between geometry (`T→0`) and probability (`T=1`).
+The three named instances:
 
 | `T` | semiring | `a ⊕_T b` | reading | where it shows up |
 |-----|----------|-----------|---------|-------------------|
@@ -413,19 +435,60 @@ soundness theorems):
 
 ---
 
+## 6.5 PIC as a logic program (the weighted-Datalog reading)
+
+PIC is, structurally, a **semiring-weighted logic program**, and this is not a stretched analogy — the
+pieces already exist across the program and only need the algebra of §2 to name them. The turnstile
+`P ⊢_γ v` (§2.5) is literally a **weighted inference rule**: a coalition (the body) derives a proposition
+(the head) with margin `γ`. Reading the calculus as a logic program:
+
+| logic programming | PIC | already in the program |
+|---|---|---|
+| atoms / facts | incidences `j ▷ v` valued in `R_T` | `fieldrun --pil-dump` (the `contrib` matrix) |
+| rule `head ⟸ body` | coalition `P ⊢ v` (a `⊗`-monomial over body sources) | the turnstile §2.5 |
+| answer / model | the lfp of the immediate-consequence operator `T_P` | i-orca `ProvableOpt_Common` |
+| query | the decode `⊤(S) = ⊕_T`-argmax over propositions | `fieldrun` decode |
+| magic-sets / demand transform | **demand-closure** `lfp(restrict T D) = lfp T ∩ D` *(proved)* | §5.6, `ProvableOpt.thy` |
+| program emission | a recursive Soufflé/Datalog program | `fieldrun --datalog` (`LOGIC_EXPORT`) |
+
+The **semiring chooses the logic**: `T = 0` (tropical) is shortest-path / Viterbi / min-cost logic
+programming (the geometry/optimization reading); `T = 1` (log) is **probabilistic** logic programming
+(ProbLog-style, the model's softmax reading); Boolean is classical Datalog (pure rule gating). This is
+exactly the Green–Karvounarakis–Tannen provenance-semiring foundation, with PIC's one native move (§2.5
+N1): the fact weights are not given but **derived from geometry**, `j ▷ v = ⟨d_j, U_v⟩`.
+
+So PIC *does* lend itself to a logic-programming language, and the **type discipline is the frame/decode
+separation** (§4): a PIC program is *frame-side* clauses (the geometry of `{U_v}` — what overlaps what)
+plus *decode-side* queries (margins, multiplicity, evaluated in `R_T`). The proved demand-closure theorem
+(§5.6) is precisely the soundness of the standard **magic-sets / demand** optimization for such a
+language, and the margin certificate (§5.5) bounds how much a clause weight may drift before an answer
+flips. A concrete `pic`-LP would be a semiring-parameterized weighted Datalog whose immediate-consequence
+operator is `T_P(I) = { v : ∃ P ⊆ I, P ⊢ v }`, evaluated in `R_T`, with the frame as the (learnable)
+fact-weight oracle — the analysis (`fieldrun --datalog`), the semantics (i-orca `lfp`/demand-closure),
+and the learnable weights (`pil`) are the three components, already built; `pic` is their shared grammar.
+*(This is the `LOGIC_EXPORT` / `PROVABLE_OPT` thread, given its algebraic spine.)*
+
+---
+
 ## 7. Empirical parameters & open questions
 
 PIC has one important parameter that the proofs **do not** pin down, plus two open links:
 
 - **`τ★` (effective decode rank)** *(empirical, NOT formalized).* The packing exponent that *binds in
   practice* is an effective rank `τ★`, not the ambient `d`. The originally-conjectured law
-  `τ★ ≈ min(exp H, d)` (effective output support sets the rank) is **only partly borne out**: measured
-  on the Pythia ladder + Qwen with `fieldrun --pil-dump`, the **effective decode-block count tracks
-  capacity (`nb`, hidden, layers) and *anti*-correlates with `exp H` across scale** — bigger, more
-  confident models use *more* effective blocks, not fewer. A genuine but **modest within-model** effect
-  survives (higher-entropy tokens use somewhat more blocks; Spearman ≈ 0.4 in capable models). So `τ★`
-  is a real but **capacity-bound, not entropy-bound** quantity; its functional form is open.
-  *(Evidence: `pil/experiments/tau_star_entropy.py`, `pil/docs/decode_circuit.md`.)*
+  `τ★ ≈ min(exp H, d)` (effective output support sets the rank) is **refuted in the cross-model
+  direction**: measured on a 7-model sweep (Pythia 70m→1.4b + Qwen 0.5B/1.5B) via `fieldrun --pil-dump`,
+  the architecture-fair effective decode-block count `r_eff` **anti-correlates with `exp H`** (Pearson
+  −0.71) and **tracks block count `nb = 2L+1`** (Pearson +0.75, the best predictor), depth and hidden
+  width — bigger, more confident models use *more* effective blocks, not fewer. The clean dissociation:
+  **pythia-1b (16 layers, *more* params) uses fewer effective blocks (14.1) than pythia-410m (24 layers,
+  *fewer* params, 23.6)** — so it is **depth/`nb`, not parameter count and not entropy** that sets
+  `r_eff ≈ (0.4–0.5)·nb` within an architecture. A genuine but **modest within-model** effect survives
+  (per token, higher-entropy positions use somewhat more blocks; Spearman ≈ 0.3–0.4 in capable models,
+  ≈ 0 in the two tiniest). So `τ★` is real but **capacity/depth-bound, not entropy-bound**; its functional
+  form is open. The earlier "≈12 scale-invariant blocks" reading was a Qwen *raw*-PR artifact — the
+  common-mode-centred count grows with `nb`.
+  *(Evidence: `pil/experiments/tau_star_entropy.py`, `pil/results/tau_star_entropy.txt`.)*
 - **coherence ⇒ margin** *(open).* §5.3's generator-side interference bound is proved; its consequence
   for the decode margin is empirical/mild, not kernel.
 - **global irreducibility** *(open).* §5.7 proves local irreducibility of a *given* coalition; whether a
@@ -460,3 +523,50 @@ PIC has one important parameter that the proofs **do not** pin down, plus two op
 *This spec is versioned with the proofs and the code. When a theorem is added to i-orca or a quantity
 changes in `pil`/`fieldrun`, update the corresponding section here and bump the version. The companion
 paper (`paper/pic_calculus.tex`) expands §1–§5 into publishable form.*
+
+---
+
+## Appendix A. A worked micro-example (the calculus on real numbers)
+
+The whole calculus on a tiny instance, exercising the native notation and the
+composed-vs-irreducible distinction of §5.7. Take sources `S = {a, b, c}` and read incidences
+`j ▷ v = c_j(v)` off a fixed table (these are the proved instances of `Separation.thy`, transcribed). A
+coalition's score is the bracket `⟦P⟧(v) = ⊗_{j∈P}(j ▷ v) = Σ_{j∈P} c_j(v)`; it **decides** `v` (`P ⊢ v`)
+when `v` is its strict argmax.
+
+**A.1 An irreducible coalition** (`triple_irreducible`). Target `t`, competitors `x, y, z`:
+
+| `j ▷ ·` | `t` | `x` | `y` | `z` |
+|---|---|---|---|---|
+| `a` | 3 | 8 | 0 | 0 |
+| `b` | 3 | 0 | 8 | 0 |
+| `c` | 3 | 0 | 0 | 8 |
+
+- Full coalition: `⟦{a,b,c}⟧(t) = 9`, `⟦{a,b,c}⟧(x)=⟦{a,b,c}⟧(y)=⟦{a,b,c}⟧(z)=8`, so `{a,b,c} ⊢_1 t`
+  (decides `t` with margin 1).
+- Every singleton fails: `{a} ▷`: `t=3` but `x=8`, so `¬({a} ⊢ t)` (and likewise `b, c`) — **`μ_t = 0`**.
+- Every proper pair fails: `⟦{a,b}⟧(t)=6` but `⟦{a,b}⟧(x)=8`; symmetrically for `{a,c}, {b,c}`.
+- No proper non-empty subset decides `t`, yet `{a,b,c}` does ⟹ **`{a,b,c}` is irreducible for `t`**.
+  Each source is *necessary*: the decision is the whole coalition or nothing.
+
+**A.2 Composed but reducible** (`mu0_not_irreducible`) — the distinction that matters. Same `t`,
+competitors `x, y`:
+
+| `j ▷ ·` | `t` | `x` | `y` |
+|---|---|---|---|
+| `a` | 3 | 4 | 0 |
+| `b` | 3 | 0 | 4 |
+| `c` | 3 | 4 | 4 |
+
+- Full: `⟦{a,b,c}⟧(t)=9 > ⟦·⟧(x)=⟦·⟧(y)=8`, so `{a,b,c} ⊢_1 t`.
+- Every singleton fails (`{a}`: `t=3, x=4`; `{c}`: `t=3, x=4=y`) — again **`μ_t = 0`**, so `t` is
+  **composed**.
+- **But the pair `{a,b}` decides:** `⟦{a,b}⟧(t)=6 > ⟦{a,b}⟧(x)=4 = ⟦{a,b}⟧(y)`, i.e. `{a,b} ⊢_2 t`.
+- So `t` is composed (`μ_t = 0`) yet **not** irreducible — a proper subset already suffices.
+
+**The lesson.** A.1 and A.2 have the **same** full-coalition decision and the **same** `μ_t = 0`, but
+differ in irreducibility. So `μ_t = 0` (low multiplicity / "no single source decides") is *necessary but
+not sufficient* for irreducibility — the kernel content of `Separation.thy`'s `mu0_not_irreducible`.
+Reading `μ_t = 0` as "this computation is irreducible" is exactly the overclaim the proof rules out; the
+turnstile `⊢` over **sub-coalitions**, not the multiplicity count, is what certifies irreducibility.
+*(Arithmetic checked; both tables are the proved instances of `Separation.thy`.)*
