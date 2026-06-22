@@ -1,0 +1,337 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% proof-status tags: kernel-proved in i-orca, empirical, or open
+\newcommand{\proved}{\textsc{[proved, i-orca]}}
+\newcommand{\empirical}{\textsc{[empirical]}}
+\newcommand{\open}{\textsc{[open]}}
+
+\newcommand{\HH}{\mathcal{H}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\inner}[2]{\langle #1,\, #2\rangle}
+\newcommand{\Uframe}{U}
+\newcommand{\Gram}{G}
+
+\title{\textbf{Projective Incidence Calculus}\\[0.3em]
+\large A semiring-weighted incidence algebra for the transformer decode,\\
+its frozen-model geometry, and its learnable frame}
+\author{}
+\date{Draft --- companion to \texttt{spec/PIC\_SPEC.md}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We give an algebraic account of the transformer next-token decision as a \emph{semiring-weighted
+incidence calculus over a continuous inner-product geometry}---\emph{Projective Incidence Calculus}
+(PIC). Propositions (tokens) are points $U_v$ in a residual space $\HH=\RR^d$; sources (per-layer
+contributions, or learned rules) are vectors $d_j$; the incidence of a source on a proposition is the
+inner product $\inner{d_j}{U_v}$; and the decision aggregates incidences through a commutative semiring
+selected by a temperature $T$. At $T=1$ the semiring is the log-semiring and PIC \emph{is} the forward
+pass (softmax over summed logits); as $T\to0$ it is the tropical (max-plus) semiring and PIC is the
+geometry of margins, Laguerre power diagrams, and a head/tail decode certificate, the two ends joined
+by Maslov dequantization. PIC separates the \emph{frame} (intrinsic geometry of $\{U_v\}$: Gram
+coherence, Welch floor, packing capacity) from the \emph{decode} (margins, participation ratio,
+multiplicity, evaluated in the chosen semiring). This separation organizes a three-part program:
+analysis reads the decode off a frozen frame (a runtime that reconstructs the model's decode exactly),
+verification proves two-sided packing bounds on the structures (a machine-checked corpus), and learning
+holds the decode fixed while \emph{retraining the frame}. We state the calculus, its semiring family,
+and the load-bearing theorems---each tagged as machine-proved, empirical, or open---and we cast the
+learning problem as frame optimization under explicit soundness invariants.
+\end{abstract}
+
+\section{Introduction}
+
+A transformer computes a next-token distribution by projecting a residual vector onto an unembedding
+matrix and taking a softmax. Read literally this is a single linear map followed by a normalization; but
+the residual vector is itself an \emph{additive} object---a sum of per-layer attention and MLP writes
+plus the embedding---so the decode logit of token $v$ decomposes as a \emph{sum of inner products}, one
+per contributing block. We take this decomposition as primitive and ask what algebra it lives in. The
+answer is a semiring-weighted incidence calculus: tokens are propositions carrying geometric directions,
+blocks are sources casting weighted votes, and the decision is the semiring aggregate of those votes.
+
+The payoff of naming the algebra is that three otherwise-separate activities become facets of one
+object. \emph{Analysis} of a frozen model is evaluation of the calculus in the log-semiring; the
+decomposition is exact, so a runtime can reconstruct the model's own decode argmax with no approximation.
+\emph{Verification} is proving structural bounds---how many tokens a frame can decode, how many rules can
+write the logits, what interference overpacking forces---and these are theorems about the calculus's
+structures, machine-checked in a kernel. \emph{Learning} is the recognition that the frame is a free
+parameter: one can hold the decode semantics fixed and deform the geometry so that more structure becomes
+retrievable. PIC is the shared vocabulary that lets a definition in one activity be a hypothesis in
+another.
+
+This paper defines PIC (\S\ref{sec:core}--\S\ref{sec:calculus}), separates frame from decode
+(\S\ref{sec:sep}), collects the proved theorems as a two-sided packing picture (\S\ref{sec:thm}), and
+casts frame learning as constrained optimization (\S\ref{sec:learn}). Throughout we tag each claim
+\proved{} (machine-checked), \empirical{} (measured), or \open{}.
+
+\section{Core structures}\label{sec:core}
+
+\begin{definition}[Frame and Gram kernel]
+Let $V$ be a finite set of \emph{propositions} (tokens), $|V|=n_p$, and let $\HH=\RR^d$ be the residual
+space. A \emph{PIC frame} is a map $\Uframe:V\to\HH$, $v\mapsto U_v$. It induces the \emph{Gram kernel}
+$\Gram(v,w)=\inner{U_v}{U_w}$ and, after row normalization $\bar U_v=U_v/\lVert U_v\rVert$, the
+\emph{cosine Gram} $\rho(v,w)=\inner{\bar U_v}{\bar U_w}$.
+\end{definition}
+
+The Gram kernel supplies the continuous, non-truth-functional overlap between propositions: tokens are
+not independent atoms but directions with measurable coherence.
+
+\begin{definition}[Sources, incidence, aggregate]
+A \emph{source set} $S$ ($|S|=J$) assigns to each source $j$ a contribution $c_j:V\to R$ valued in a
+semiring carrier $R$. The \emph{residual reading} fixes a vector $d_j\in\HH$ per source and sets
+\[
+  c_j(v)=\inner{d_j}{U_v}.
+\]
+The \emph{aggregate score} of $v$ is the semiring sum of its incidences with a bias,
+\[
+  L(v)=\Bigl(\bigoplus\nolimits_{T,\,j\in S} c_j(v)\Bigr)\otimes b_v,
+  \qquad\text{classically}\quad L(v)=\sum_{j\in S}\inner{d_j}{U_v}+b_v .
+\]
+\end{definition}
+
+In the transformer instance, the sources are the \emph{DLA blocks}: an $L$-layer model has
+$n_b=2L+1$ blocks (one attention and one MLP/expert write per layer, plus the embedding), and $d_j$ is
+block $j$'s additive contribution to the residual at the decode position. The incidence matrix
+$c_j(v)=\inner{d_j}{U_v}$ is precisely the per-block contribution a decomposing runtime emits, and its
+column sum reconstructs the model's decode logit.
+
+\section{The semiring family}\label{sec:semiring}
+
+PIC is parameterized by a temperature $T\ge 0$ selecting a commutative semiring
+$(R_T,\oplus_T,\otimes,0,1)$ with a fixed product $\otimes=+$ (incidences along a coalition add) and a
+$T$-dependent sum:
+\[
+  a\oplus_T b \;=\; T\,\log\!\bigl(e^{a/T}+e^{b/T}\bigr),
+  \qquad
+  a\oplus_T b \xrightarrow[\;T\to 0^+\;]{} \max(a,b).
+\]
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+\toprule
+$T$ & semiring & $a\oplus_T b$ & reading \\
+\midrule
+$1$ & log-semiring & $\log(e^a+e^b)$ & probabilistic incidence $\to$ softmax \\
+$\to 0^+$ & tropical (max-plus) & $\max(a,b)$ & argmax, margins, power diagrams \\
+general & deformed & $T\log\sum e^{\cdot/T}$ & temperature-controlled decoding \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The two ends are joined by \emph{Maslov dequantization}: the probabilistic calculus (the model in
+operation) and the geometric calculus (the proofs) are limits of one deformation, not different objects.
+The tropical end is a genuine semiring; in particular the distributive law
+$a\otimes(b\oplus c)=(a\otimes b)\oplus(a\otimes c)$ holds \proved{}, the law that rewrites a
+sum-of-maxes (a ReLU stack) as a max-of-sums (a tropical polynomial).
+
+\section{PIC as a calculus}\label{sec:calculus}
+
+\paragraph{Syntax.} Sources are weighted clauses; a \emph{derivation} of $v$ is a finite
+\emph{coalition} $P\subseteq S$ whose incidences combine, under $\otimes$ within the coalition and
+$\oplus_T$ across alternatives, to support $v$.
+
+\paragraph{Semantics.} Semiring \emph{provenance} in the style of Green--Karvounarakis--Tannen: the
+value of $v$ is an element of $R_T$ accumulated over derivations, with the Gram kernel supplying the
+continuous overlap a Boolean provenance lacks. The frozen-model reading is the log-semiring provenance;
+the geometric reading is the tropical provenance.
+
+\paragraph{Decision rules.}
+\begin{itemize}[nosep]
+  \item \emph{Aggregate:} $L(v)=\bigoplus_{T,\,j\in S} c_j(v)$.
+  \item \emph{Retrieved:} $v$ has high margin and high multiplicity $\mu_t$ (many sources already vote
+        for it).
+  \item \emph{Composed:} $\mu_t=0$ (no single source decides $v$) yet $v$ wins the aggregate---the
+        decision is carried by a coalition.
+  \item \emph{Irreducible:} a composed $v$ over coalition $S$ such that $S$ decides $v$ but no proper
+        nonempty subset does.
+\end{itemize}
+
+\paragraph{Soundness anchors.}
+\begin{itemize}[nosep]
+  \item \emph{Log-semiring $\Rightarrow$ transformer} \empirical{}. With inner-product incidences in the
+        log-semiring, the calculus is next-token behaviour: a decomposing runtime reconstructs the
+        model's decode argmax with measured reconstruction $1.00$ across architectures (rotary, NeoX,
+        mixture-of-experts, latent attention). PIC is the forward pass rebracketed, not an approximation.
+  \item \emph{Tropical $\Rightarrow$ power diagram.} As $T\to0$, $\arg\max_v \inner{r}{U_v}+b_v$ is
+        Laguerre (power-diagram) cell membership over sites $\{U_v\}$ with weights $\{b_v\}$; the
+        capacity theorems of \S\ref{sec:thm} are the geometry of that diagram.
+\end{itemize}
+
+\section{Frame versus decode}\label{sec:sep}
+
+Every PIC quantity is either \emph{frame-side} (a function of $\{U_v\}$ alone---intrinsic, label-free)
+or \emph{decode-side} (a function of the aggregate $L$ and a target, evaluated in the chosen semiring).
+
+\paragraph{Decode-side.}
+margin $m(t)=L(t)-\max_{v\neq t}L(v)$;\quad
+participation ratio $\mathrm{PR}=\bigl(\sum_j|w_j|\bigr)^2/\sum_j w_j^2$ over incidence magnitudes
+$w_j=|c_j(t)|$ (the effective number of contributing sources);\quad
+multiplicity $\mu_t=\#\{j:\arg\max_v c_j(v)=t\}$ (unanimity; $\mu_t=0$ is composed);\quad
+ambiguity $\eta^2$ (between/total variance of candidate firing on the lowest-margin slice).
+
+\begin{remark}[Architecture-fair PR]
+When sources carry a common-mode component identical across candidates (e.g.\ a LayerNorm/embedding
+offset), it cancels in the argmax but inflates raw $\mathrm{PR}$. The discriminative count centres each
+source across candidates first, $\mathrm{PR}\bigl((c_j(t)-\overline{c_j})_j\bigr)$; raw and centred agree
+for RMSNorm frames and diverge for LayerNorm. Use the centred form for cross-architecture comparison.
+\end{remark}
+
+\paragraph{Frame-side.}
+Gram coherence $\max_{v\neq w}|\rho(v,w)|$;\quad
+frame potential $\mathrm{FP}=\operatorname{mean}_{v\neq w}\rho(v,w)^2$;\quad
+Welch floor $W=(n_p-d)/\bigl(d(n_p-1)\bigr)$ for $n_p>d$, else $0$. Always $\mathrm{FP}\ge W$; the ratio
+$\mathrm{FP}/W$ reports frame quality, equal to $1$ at an equiangular tight frame.
+
+\section{The two-sided packing theorems}\label{sec:thm}
+
+The proved results split into a \emph{frame side} (how many tokens a geometry can decode) and a
+\emph{generator side} (how many rules can write the logits, and what interference overpacking forces).
+
+\subsection{Frame side: decode capacity}
+
+Call $v$ \emph{$\gamma$-decodable} if some unit-ball residual $r$ ($\lVert r\rVert\le1$) makes it win by
+margin $\gamma$: $\forall w\neq v,\ \inner{r}{U_w}+b_w+\gamma\le\inner{r}{U_v}+b_v$.
+
+\begin{theorem}[Margin separation \proved{}]\label{thm:sep}
+If $v$ and $w$ are both $\gamma$-decodable then $\gamma\le\lVert U_v-U_w\rVert$.
+\end{theorem}
+\begin{proof}[Proof sketch]
+Add the two witness inequalities; the biases cancel, and Cauchy--Schwarz with $\lVert r_v-r_w\rVert\le2$
+gives the bound. (Machine-checked in \texttt{DecodeCapacity.thy}.)
+\end{proof}
+
+\begin{corollary}[Head capacity \proved{}]\label{cor:cap}
+Any set $S$ of $\gamma$-decodable tokens is a $\gamma$-code: $\lVert U_v-U_w\rVert\ge\gamma$ for distinct
+$v,w\in S$. Hence $|S|\le(1+2\rho/\gamma)^d$ with $\rho=\max_v\lVert U_v\rVert$.
+\end{corollary}
+
+This is the cell-capacity half; the bound is astronomically slack for realistic $d$, so this side rarely
+binds.
+
+\subsection{Generator side: routing rank and Welch interference}
+
+$M$ rules write logit adjustments along fixed readout vectors $\{a_1,\dots,a_M\}$ through
+input-dependent gates $h_k(z)$.
+
+\begin{theorem}[Routing superposition \proved{}]\label{thm:rank}
+$\sum_{i\in I}h_i\,a_i\in\operatorname{span}(a_I)$ and $\dim\operatorname{span}(a_I)\le|I|$. Every rule
+adjustment lives in a subspace of dimension $\le\min(M,d)$; superposition is forced when the number of
+routing decisions exceeds $M$.
+\end{theorem}
+
+\begin{theorem}[Routing Welch \proved{}]\label{thm:welch}
+For $n$ unit-norm routing features in $M$ coordinates,
+$\sum_{i\neq j}\inner{f_i}{f_j}^2\ge n(n-M)/M$, strictly positive exactly when $n>M$. Cross-talk-free
+routing requires $M\ge n$.
+\end{theorem}
+
+\begin{remark}[The missing link \open{}]
+The step ``routing interference $\Rightarrow$ margin degradation'' is \emph{not} a kernel theorem.
+Trained models pack features at $\approx$ the Welch floor with healthy margins; the coherence-to-margin
+implication is measured and mild, not proved.
+\end{remark}
+
+\subsection{The decode certificate and its robustness}
+
+With $\operatorname{decode}(L,S)=\max_{v\in S}L(v)$:
+
+\begin{theorem}[Head/tail certificate \proved{}]\label{thm:headtail}
+$\operatorname{decode}(L,H\cup T)=\max(\operatorname{decode}(L,H),\operatorname{decode}(L,T))$, and if
+$\operatorname{decode}(L,T)\le\operatorname{decode}(L,H)$ then the full decode equals the head decode and
+its argmax lies in $H$. If instead the head does not dominate, the decision lies in the tail---the
+explicit, uncertified residue.
+\end{theorem}
+
+\begin{theorem}[Margin certificate, threshold tight \proved{}]\label{thm:margin}
+If $|L'(v)-L(v)|\le\delta$ for all $v$ and $m(t)>2\delta$, then $t$ remains the strict argmax under $L'$.
+The constant $2\delta$ is tight (a $m(t)=2\delta$ token can be tied by a $\delta$-perturbation), and the
+certificate is silent for $m(t)\le2\delta$---exactly the small-margin residue.
+\end{theorem}
+
+Theorem~\ref{thm:headtail} is the algebra behind the empirical observation that a per-position sparse
+head (a handful of late-layer blocks) reproduces the decode \emph{when} it dominates the tail; harder
+tokens push mass into the residue.
+
+\subsection{Irreducibility}
+
+For a composition matrix $c:\text{sources}\times\text{outcomes}\to\RR$, $S$ \emph{decides} $t$ if
+$\sum_{j\in S}c(j,v)<\sum_{j\in S}c(j,t)$ for all $v\neq t$; $\mu_0$ holds if no singleton decides $t$;
+$S$ is \emph{irreducible} for $t$ if it decides $t$ and no proper nonempty subset does.
+
+\begin{theorem}[$\mu_0\nRightarrow$ irreducible \proved{}]\label{thm:irr}
+There is an explicit instance with $\mu_0$ (no single source decides $t$) in which a proper pair already
+decides $t$; and a separate explicit fully-irreducible triple. Hence ``no singleton decides'' does not
+imply ``all sources needed''.
+\end{theorem}
+
+This is the precise statement of $\mu_t=0\neq\text{irreducible}$: low multiplicity is necessary but not
+sufficient for genuine irreducibility. Whether a composed token is irreducible under \emph{every}
+admissible frame---the real necessity question---is \open{}.
+
+\section{Frame learning as constrained optimization}\label{sec:learn}
+
+Fix the decode semantics (log-semiring $L$, softmax) and optimize the frame $U$---equivalently, deform
+the Gram kernel---so that more propositions become retrievable:
+\[
+  \mathcal{L}(U)=\underbrace{\mathrm{NLL}(L;t)}_{\text{decode, data}}
+  +\;\lambda_m\underbrace{\operatorname{ReLU}\!\bigl(\gamma^\star-m(t)\bigr)}_{\text{decode, margin}}
+  +\;\lambda_f\underbrace{\mathrm{FP}(U)}_{\text{frame, structure}} .
+\]
+The decode-side terms anchor the aggregate to the targets and push the worst-competitor margin past
+$\gamma^\star$; the frame-side term decorrelates propositions toward the Welch floor. A
+Generate--Gate--Refine loop wraps the gradient step: \emph{generate} candidate sources (random or
+frame-aligned, or real DLA blocks loaded through the analysis seam), \emph{gate} them by the PIC
+diagnostics ($\eta^2$, activation variance, firing decorrelation), \emph{refine} by a step on
+$\mathcal{L}$.
+
+\paragraph{Soundness invariants.} The loop should preserve: (S1) \emph{decode soundness}---the refined
+frame still realizes a valid log-semiring decoder on held data; (S2) \emph{margin monotonicity}---the
+certified margin mass $\#\{t:m(t)>2\delta\}$ of Theorem~\ref{thm:margin} does not decrease; (S3)
+\emph{frame admissibility}---$\mathrm{FP}(U)\ge W$ is structural, so a report must target $\mathrm{FP}/W\to1$
+and never claim to beat the floor. These are natural targets for learning-side soundness theorems.
+
+\paragraph{What is established \empirical{}.} On synthetic benchmarks no theory-guided knob
+(frame-regularization, allocation/targeting, propose-score-select, coherence-regularization) beats plain
+SGD on $\mathcal{L}$; PIL training \emph{is} gradient descent on the frame, cheap only as a shallow head
+on frozen sources. The win that exists is \emph{retraining the frame/subspace}---the movable side of the
+boundary---rather than fitting an encoder into a frozen dictionary, consistent with the verification-side
+result that frozen compression hits a $\Theta(d)$ floor a rank-bottlenecked retrained update clears.
+
+\section{An empirical parameter the proofs do not pin down}\label{sec:tau}
+
+The packing exponent that binds in practice is an effective rank $\tau^\star$, not the ambient $d$. A
+natural conjecture, $\tau^\star\approx\min(e^{H},d)$ (effective output support sets the rank), is only
+partly borne out. Measured on a Pythia scale ladder and Qwen models via the analysis seam, the effective
+decode-block count \emph{tracks capacity} (block count, hidden width, depth) and \emph{anti-correlates}
+with $e^{H}$ across scale: larger, more confident models use \emph{more} effective blocks, not fewer. A
+genuine but modest \emph{within-model} effect survives---higher-entropy tokens use somewhat more blocks.
+So $\tau^\star$ is real but capacity-bound rather than entropy-bound; its functional form is \open{}. We
+record this as the cleanest current example of the discipline the tags enforce: a plausible law,
+measured, and reported by what the data support rather than by what would have been tidy.
+
+\section*{Provenance of claims}
+\proved{} statements are machine-checked in the i-orca Isabelle corpus
+(\texttt{tropical/\{TropicalSemiring,HeadTail,DecodeCapacity,RoutingRank\}.thy},
+\texttt{superposition/\{Welch,RoutingWelch,Superposition\}.thy},
+\texttt{provable\_opt/ProvableOpt\_Common.thy}, \texttt{fieldrun/separation/Separation.thy}).
+\empirical{} statements are measured by the fieldrun runtime and the pil experiments.
+\open{} statements are flagged hypotheses. See \texttt{spec/PIC\_SPEC.md} for the operational
+definitions and file-level pointers.
+
+\end{document}

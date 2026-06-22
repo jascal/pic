@@ -1,0 +1,15 @@
+# latexmk / pdflatex build artifacts
+paper/*.aux
+paper/*.log
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.bbl
+paper/*.blg
+paper/*.out
+paper/*.toc
+paper/*.synctex.gz
+*.pdf
+
+# editor / OS
+*.swp
+.DS_Store
