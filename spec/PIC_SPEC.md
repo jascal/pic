@@ -69,15 +69,26 @@ incidence matrix `c_j(v) = ⟨d_j, U_v⟩` is exactly `contrib[block][cand]` emi
 blocks (loaded through the `--pil-dump` seam) or synthetic/learned propositions
 (`learner.py:propose_parallel_sources`).
 
-### 1.3 Aggregate (the decision)
+### 1.3 Monomials, polynomial, decision
 
-The **aggregate score** of proposition `v` is the semiring sum of its incidences, plus a bias:
+The semiring has **two** operations and they play **different roles** — getting this right is the whole
+point of the algebra:
 
-> `L(v) = ( ⨁_{j∈S} c_j(v) ) ⊗ b_v`,   classically `L(v) = Σ_j ⟨d_j, U_v⟩ + b_v`
+- **`⊗` (= real `+`) combines sources *within* a token.** A token `v`'s score is the `⊗`-product of its
+  incidences — a **monomial**:
+  > `L(v) = ( ⊗_{j∈S} c_j(v) ) ⊗ b_v = Σ_{j∈S} ⟨d_j, U_v⟩ + b_v`
+  (`geometry.py:logits_from_incidences` sums over the source axis). This is `T`-independent: sources just
+  add.
+- **`⊕_T` combines *across* tokens (the alternatives).** The whole decode is the `⊕_T`-sum of the token
+  monomials — a **`(⊕_T,⊗)` polynomial** whose monomials are the tokens and whose variables are the
+  sources/residual:
+  > `Z_T = ⊕_{T,\ v∈V} L(v) = ⊕_{T,\ v∈V} ⊗_{j∈S} c_j(v) ⊗ b_v`.
 
-(`geometry.py:logits_from_incidences` sums over the source axis). The **decision** is
-`argmax_v L(v)` (decode), or the softmax distribution `p(v) ∝ exp L(v)` — the two are the tropical
-and log-semiring readings of the *same* `L`.
+The **decision** reads off this polynomial. At `T → 0` (tropical) `Z_0 = max_v L(v)` is the decode value
+and `argmax_v L(v)` the decoded token; at `T = 1` (log) `Z_1 = logsumexp_v L(v)` is the log-partition and
+`p(v) = exp(L(v) − Z_1)` the softmax. **The monomials `L(v)` are shared; only the cross-token aggregation
+`⊕_T` changes with `T`.** (This is exactly the tropical-polynomial picture of a ReLU network, with tokens
+as monomials — see §2 and the temperature-invariance lemma §3.1.)
 
 ---
 
@@ -119,12 +130,15 @@ of a tuple as *given*; PIC *derives* it from geometry. Write
 So the new content is precisely `▷ = ⟨·,·⟩∘(d,U)`: **the provenance weight is an inner product in a
 learnable frame.** Everything downstream is bookkeeping over `▷`.
 
-**(N2) The coalition bracket** — semiring aggregation of a coalition `P ⊆ S` at temperature `T`:
+**(N2) The coalition bracket** — the `⊗`-monomial of a coalition `P ⊆ S` on a token `v` (sources add;
+**`T`-independent**):
 
-> `⟦P⟧_T(v)  :=  ⨁_{T, j∈P} (j ▷ v)`,     and the full reading   `L_T(v) := ⟦S⟧_T(v) ⊗ b_v`.
+> `⟦P⟧(v)  :=  ⊗_{j∈P} (j ▷ v)  =  Σ_{j∈P} ⟨d_j, U_v⟩`,     full token score   `L(v) := ⟦S⟧(v) ⊗ b_v`.
 
-`⟦·⟧_1` is the log-semiring (softmax) reading; `⟦·⟧_0` is the tropical (max) reading. The decode is
-`⊤_T(P) := argmax_v ⟦P⟧_T(v)`.
+The **`T` lives across tokens, not inside the bracket:** the decode polynomial is
+`Z_T := ⊕_{T, v∈V} L(v)`, and the decoded token is `⊤(S) := argmax_v ⟦S⟧(v) ⊗ b_v` — which, by §3.1, is
+the **same for every `T`**. (So there is no `⟦·⟧_T`; the bracket is one object, read out by the
+`T`-family.)
 
 **(N3) The decision turnstile** — the native gadget that makes the trichotomy of §3 one line each:
 
@@ -162,7 +176,8 @@ overlap that a Boolean provenance semiring lacks. The frozen-model reading is th
 provenance; the geometric reading is the tropical provenance.
 
 **Inference / decision rules** (in the native notation of §2.5):
-- *Aggregate:* `L_T(v) = ⟦S⟧_T(v) ⊗ b_v`; decode `⊤_T(S) = argmax_v ⟦S⟧_T(v)`.
+- *Aggregate:* `L(v) = ⟦S⟧(v) ⊗ b_v`; decode `⊤(S) = argmax_v L(v)` (`T`-invariant, §3.1); the
+  `T`-family only sets how the cross-token partition `Z_T = ⊕_{T,v} L(v)` normalises confidence.
 - *Retrieved:* `∃ j∈S. {j} ⊢_γ v` — a singleton coalition already decides `v` (high `μ_t`).
 - *Composed:* `S ⊢ v` but `∀ j∈S. ¬({j} ⊢ v)` — the decision is carried by a coalition, no single
   source (`μ_t = 0`).
@@ -177,6 +192,26 @@ provenance; the geometric reading is the tropical provenance.
 - *Tropical ⇒ power diagram.* In the `T → 0` limit the decision `argmax_v ⟨r, U_v⟩ + b_v` is a
   **Laguerre (power) diagram** cell membership over the sites `{U_v}` with weights `{b_v}`; the
   capacity and separation theorems of §5 are the geometry of that diagram.
+
+### 3.1 Decode temperature-invariance *(native; what ties the two anchors together)*
+
+The two soundness anchors are only consistent because of a fact that is **native to the `T`-family** and
+sits in neither tropical geometry nor provenance semirings on its own:
+
+> **Lemma (decode invariance).** For every `T > 0`, `⊤(S) = argmax_v L(v)` is the **same** token, equal
+> to the tropical (`T → 0`) decoder. Only the *normalised confidence* — the softmax `p_T(v) = exp((L(v) −
+> Z_T)/T)` and hence the entropy/partition `Z_T = ⊕_{T,v} L(v)` — varies with `T`.
+
+*Why.* The monomials `L(v) = ⟦S⟧(v) ⊗ b_v` carry **no `T`** (sources combine by `⊗ = +`); `T` enters
+only the cross-token aggregator `⊕_T`, which is **strictly order-preserving in each argument** and
+satisfies `argmax = (⊕_0)`-selector. So the `argmax` of a fixed vector `(L(v))_v` is `T`-independent;
+`⊕_T` reweights *how much* the winner beats the field, never *who* wins.
+
+This is the rigorous form of the soundness bridge: the **proofs** run at `T → 0` (tropical margins,
+power-diagram capacity, head/tail) and the **model** runs at `T = 1` (softmax), yet they decode the
+**same token** because they share the monomials and differ only in `⊕_T`. The forge-tax / confidence
+story (entropy, margins) is the `T`-dependent part; the *decision* is the `T`-invariant part. Corollary:
+every margin/decode theorem of §5 proved tropically transfers verbatim to the operating model's argmax.
 
 ---
 
@@ -228,6 +263,26 @@ All statements below are **kernel-proved in i-orca** at the cited file. They spl
 of a single **two-sided packing** picture: the **frame side** bounds how many tokens a geometry can
 decode; the **generator side** bounds how many rules can write the logits and what interference that
 forces.
+
+### 5.0 The duality that organises them *(native schema)*
+
+The split is not two unrelated bound-collections — it is the **two arities of the decode polynomial**
+`Z_T = ⊕_{T,v∈V} ⊗_{j∈S} c_j(v)` (§1.3). A `(⊕,⊗)` polynomial has two sizes, and PIC bounds each:
+
+| | algebraic role | what is bounded | by | theorem |
+|---|---|---|---|---|
+| **monomials** (tokens `v`) | the `⊕`-arity | how many can be cleanly **decoded** (γ-separated) | frame geometry: `\|S\| ≤ (1+2ρ/γ)^d` | §5.1 |
+| **variables** (sources `j`) | the `⊗`-arity | how many are **independent** writers | generator rank: `dim ≤ min(M,d)` | §5.2 |
+| **packing excess** | `#variables > rank` | forced **interference** | Welch: `Σ_{i≠j}⟨f_i,f_j⟩² ≥ n(n−M)/M` | §5.3 |
+
+So **"two-sided packing" = a simultaneous bound on a polynomial's monomial-count and its variable-rank**,
+with Welch as the obstruction that appears exactly when the `⊗`-side (sources) is overpacked relative to
+its rank. The frame side (`§5.1`, slack ~`10^59` for real `d`) is rarely binding; the **generator side
+(`§5.2`–`§5.3`) is the side that binds** — superposition is forced on the writers, not on the readouts.
+The head/tail certificate (§5.4) is then the statement that a *sub-polynomial* (a head of monomials)
+reproduces the decode when it dominates; the margin certificate (§5.5) bounds how much the *coefficients*
+may be perturbed without changing the argmax. Every §5 theorem is one of: bound a monomial-count, bound a
+variable-rank, or certify a sub-polynomial / a coefficient perturbation.
 
 ### 5.1 Frame side — decode capacity (`tropical/DecodeCapacity.thy`)
 

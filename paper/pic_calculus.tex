@@ -3,6 +3,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{mathtools}
+\usepackage{stmaryrd} % \llbracket \rrbracket for the coalition bracket
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{enumitem}
@@ -92,24 +93,48 @@ $\Gram(v,w)=\inner{U_v}{U_w}$ and, after row normalization $\bar U_v=U_v/\lVert 
 The Gram kernel supplies the continuous, non-truth-functional overlap between propositions: tokens are
 not independent atoms but directions with measurable coherence.
 
-\begin{definition}[Sources, incidence, aggregate]
+\begin{definition}[Sources, incidence, monomial, polynomial]\label{def:agg}
 A \emph{source set} $S$ ($|S|=J$) assigns to each source $j$ a contribution $c_j:V\to R$ valued in a
-semiring carrier $R$. The \emph{residual reading} fixes a vector $d_j\in\HH$ per source and sets
+semiring carrier $R$. The \emph{residual reading} fixes a vector $d_j\in\HH$ per source and sets the
+\emph{incidence} $c_j(v)=\inner{d_j}{U_v}$. The two semiring operations play different roles:
+\emph{$\otimes$ combines sources within a token}, giving a \emph{monomial}
 \[
-  c_j(v)=\inner{d_j}{U_v}.
+  L(v)=\Bigl(\bigotimes\nolimits_{j\in S} c_j(v)\Bigr)\otimes b_v=\sum_{j\in S}\inner{d_j}{U_v}+b_v
+  \qquad(\text{$T$-independent});
 \]
-The \emph{aggregate score} of $v$ is the semiring sum of its incidences with a bias,
+while \emph{$\oplus_T$ combines tokens}, giving the decode \emph{polynomial}
 \[
-  L(v)=\Bigl(\bigoplus\nolimits_{T,\,j\in S} c_j(v)\Bigr)\otimes b_v,
-  \qquad\text{classically}\quad L(v)=\sum_{j\in S}\inner{d_j}{U_v}+b_v .
+  Z_T=\bigoplus\nolimits_{T,\,v\in V} L(v)
+      =\bigoplus\nolimits_{T,\,v\in V}\ \bigotimes\nolimits_{j\in S} c_j(v)\otimes b_v .
 \]
 \end{definition}
 
-In the transformer instance, the sources are the \emph{DLA blocks}: an $L$-layer model has
-$n_b=2L+1$ blocks (one attention and one MLP/expert write per layer, plus the embedding), and $d_j$ is
-block $j$'s additive contribution to the residual at the decode position. The incidence matrix
-$c_j(v)=\inner{d_j}{U_v}$ is precisely the per-block contribution a decomposing runtime emits, and its
-column sum reconstructs the model's decode logit.
+Thus each token is a monomial and the decode is a $(\oplus_T,\otimes)$ polynomial whose monomials are the
+tokens and whose variables are the sources---the tropical-polynomial picture of a ReLU network. The
+decision reads off $Z_T$: at $T\to0$, $Z_0=\max_v L(v)$ and the decode is $\arg\max_v L(v)$; at $T=1$,
+$Z_1=\operatorname{logsumexp}_v L(v)$ and $p(v)=\exp(L(v)-Z_1)$. The monomials are shared across $T$; only
+$\oplus_T$ changes (Lemma~\ref{lem:tinv}).
+
+In the transformer instance, the sources are the \emph{DLA blocks}: an $L$-layer model has $n_b=2L+1$
+blocks (one attention and one MLP/expert write per layer, plus the embedding), and $d_j$ is block $j$'s
+additive contribution to the residual at the decode position. The incidence $c_j(v)=\inner{d_j}{U_v}$ is
+precisely the per-block contribution a decomposing runtime emits, and its source-sum reconstructs the
+model's decode logit.
+
+\paragraph{Native notation.} PIC borrows its carriers (semiring, Gram kernel, Welch bound, power
+diagrams) so as to inherit their theorems, but three things are native and get their own notation. The
+\emph{incidence arrow} $j\triangleright v:=\inner{d_j}{U_v}$ names the one new primitive---provenance as
+an inner product in a learnable frame. The \emph{coalition bracket}
+$\llbracket P\rrbracket(v):=\bigotimes_{j\in P}(j\triangleright v)$ is the partial monomial of a coalition
+$P\subseteq S$ (no $T$: sources add). The \emph{margin turnstile}
+\[
+  P\vdash_\gamma v\quad:\Longleftrightarrow\quad
+  \llbracket P\rrbracket(v)-\max_{w\neq v}\llbracket P\rrbracket(w)\ \ge\ \gamma
+\]
+(``coalition $P$ decides $v$ with margin $\ge\gamma$''; write $P\vdash v$ for $\gamma=0$) collapses the
+decision regimes to one line each: \emph{retrieved} $\exists j.\ \{j\}\vdash_\gamma v$;
+\emph{composed} $S\vdash v$ but $\forall j.\ \neg(\{j\}\vdash v)$; \emph{irreducible} $S\vdash v$ and
+$\forall P\subsetneq S,P\neq\emptyset.\ \neg(P\vdash v)$.
 
 \section{The semiring family}\label{sec:semiring}
 
@@ -151,15 +176,12 @@ value of $v$ is an element of $R_T$ accumulated over derivations, with the Gram 
 continuous overlap a Boolean provenance lacks. The frozen-model reading is the log-semiring provenance;
 the geometric reading is the tropical provenance.
 
-\paragraph{Decision rules.}
+\paragraph{Decision rules} (in the native turnstile of Definition~\ref{def:agg}).
 \begin{itemize}[nosep]
-  \item \emph{Aggregate:} $L(v)=\bigoplus_{T,\,j\in S} c_j(v)$.
-  \item \emph{Retrieved:} $v$ has high margin and high multiplicity $\mu_t$ (many sources already vote
-        for it).
-  \item \emph{Composed:} $\mu_t=0$ (no single source decides $v$) yet $v$ wins the aggregate---the
-        decision is carried by a coalition.
-  \item \emph{Irreducible:} a composed $v$ over coalition $S$ such that $S$ decides $v$ but no proper
-        nonempty subset does.
+  \item \emph{Aggregate:} $L(v)=\llbracket S\rrbracket(v)\otimes b_v$; decode $\arg\max_v L(v)$.
+  \item \emph{Retrieved:} $\exists j\in S.\ \{j\}\vdash_\gamma v$ (a singleton decides; high $\mu_t$).
+  \item \emph{Composed:} $S\vdash v$ but $\forall j\in S.\ \neg(\{j\}\vdash v)$ (no singleton; $\mu_t=0$).
+  \item \emph{Irreducible:} $S\vdash v$ and $\forall P\subsetneq S,P\neq\emptyset.\ \neg(P\vdash v)$.
 \end{itemize}
 
 \paragraph{Soundness anchors.}
@@ -172,6 +194,26 @@ the geometric reading is the tropical provenance.
         Laguerre (power-diagram) cell membership over sites $\{U_v\}$ with weights $\{b_v\}$; the
         capacity theorems of \S\ref{sec:thm} are the geometry of that diagram.
 \end{itemize}
+
+\noindent The two anchors are consistent only because of a fact native to the $T$-family:
+
+\begin{proposition}[Decode temperature-invariance]\label{lem:tinv}
+For every $T>0$, $\arg\max_v L(v)$ is the same token, equal to the tropical ($T\to0$) decoder; only the
+normalized confidence $p_T(v)=\exp\bigl((L(v)-Z_T)/T\bigr)$ and the partition $Z_T=\bigoplus_{T,v}L(v)$
+depend on $T$.
+\end{proposition}
+\begin{proof}
+The monomials $L(v)=\llbracket S\rrbracket(v)\otimes b_v$ carry no $T$ (sources combine by $\otimes=+$).
+$T$ enters only the cross-token aggregator $\oplus_T$, which is strictly order-preserving in each
+argument with $\arg\max=(\oplus_0)$-selector; hence the $\arg\max$ of the fixed vector $(L(v))_v$ is
+$T$-independent. $\oplus_T$ reweights how much the winner beats the field, never which token wins.
+\end{proof}
+
+This is the rigorous bridge between the anchors: the \emph{proofs} run at $T\to0$ (tropical margins,
+power-diagram capacity, head/tail) and the \emph{model} runs at $T=1$ (softmax), yet they decode the same
+token because they share the monomials. Every margin/decode theorem of \S\ref{sec:thm} proved tropically
+therefore transfers verbatim to the operating model's argmax; the $T$-dependent part is exactly the
+confidence (entropy, margins), the locus of the forge tax.
 
 \section{Frame versus decode}\label{sec:sep}
 
@@ -202,8 +244,16 @@ $\mathrm{FP}/W$ reports frame quality, equal to $1$ at an equiangular tight fram
 
 The proved results split into a \emph{frame side} (how many tokens a geometry can decode) and a
 \emph{generator side} (how many rules can write the logits, and what interference overpacking forces).
+This split is not a coincidence: it is the \emph{two arities} of the decode polynomial $Z_T$ of
+Definition~\ref{def:agg}. A $(\oplus,\otimes)$ polynomial has a monomial-count and a variable-rank, and
+PIC bounds each---the frame side bounds the \textbf{monomials} (tokens that can be cleanly decoded, the
+$\oplus$-arity) at $(1+2\rho/\gamma)^d$, the generator side bounds the \textbf{variables} (independent
+sources, the $\otimes$-arity) at $\min(M,d)$, and Welch is the obstruction that appears exactly when the
+variable side is overpacked. ``Two-sided packing'' is thus a simultaneous bound on a polynomial's
+monomial-count and its variable-rank. The frame side is astronomically slack for realistic $d$; the
+binding side is the generator---superposition is forced on the writers, not on the readouts.
 
-\subsection{Frame side: decode capacity}
+\subsection{Frame side: decode capacity (monomial count)}
 
 Call $v$ \emph{$\gamma$-decodable} if some unit-ball residual $r$ ($\lVert r\rVert\le1$) makes it win by
 margin $\gamma$: $\forall w\neq v,\ \inner{r}{U_w}+b_w+\gamma\le\inner{r}{U_v}+b_v$.
@@ -224,7 +274,7 @@ $v,w\in S$. Hence $|S|\le(1+2\rho/\gamma)^d$ with $\rho=\max_v\lVert U_v\rVert$.
 This is the cell-capacity half; the bound is astronomically slack for realistic $d$, so this side rarely
 binds.
 
-\subsection{Generator side: routing rank and Welch interference}
+\subsection{Generator side: routing rank and Welch interference (variable rank)}
 
 $M$ rules write logit adjustments along fixed readout vectors $\{a_1,\dots,a_M\}$ through
 input-dependent gates $h_k(z)$.
