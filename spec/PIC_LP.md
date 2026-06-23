@@ -164,18 +164,22 @@ Grammar surface make the recursive PIC-LP rules readable?
 
 ## 8. Status
 
-- **proved** (i-orca): the semiring laws (`TropicalSemiring`); the magic-sets/demand-closure soundness
-  (`ProvableOpt`); the margin (clause-weight) certificate, threshold-tight; the recursive-rule existence
-  and the `μ_t=0 ≠ irreducible` gap (`PIC_Core`/`Separation`); each input grounds the program to a model
-  (`PIC_Core.encoder_slice_logit`).
+- **proved** (i-orca, `PIC_Logic.thy` + `PIC_Forward.thy`): the `T_P`/least-model semantics
+  (`Tp`/`answer`); the magic-sets/demand-closure soundness (`demand_restrict_lfp`, + the decidable
+  rule-level criterion `demand_closed_TpI`); the margin (clause-weight) certificate, threshold-tight
+  (`decode_margin_certified`); unbounded recursion in the lfp (`reach_all`); the `μ_t=0 ≠ irreducible`
+  gap (`PIC_Core`/`Separation`); each input grounds the program to a model
+  (`PIC_Core.encoder_slice_logit`); **and the forward pass IS the least fixpoint** —
+  `lfp_is_trajectory`: `answer(Player) = {(ℓ, Rℓ) | ℓ}` exactly, so `lfp(T_P)` of the full layer
+  program equals the forward residual stack and the decode reads its final layer (`lfp_decode_logits`).
 - **empirical** (fieldrun): the emitted program reproduces the model decode (`export --logic`, run in
   Soufflé); the induction rule is the one clean recursive clause measured.
-- **open**: a single kernel proof that `lfp(T_P)` of the *full layer program* equals the model decode
-  (the per-piece soundness is proved; the end-to-end lfp characterization is not yet one theorem); the
-  semantics of *unbounded* recursion depth (induction composition) as a recursive PIC-LP program.
+- **open**: the semantics of *unbounded* recursion depth (induction composition) as a recursive PIC-LP
+  program with a genuine (not finite-stratified) fixpoint over the position axis — the DCG-surface
+  direction (§7.5).
 
 ---
 
-*Next build targets: a kernel `PIC_Logic.thy` defining `T_P` + `lfp` for the PIC clause program and
-instantiating `demand_restrict_lfp` for the decode query (the magic-sets soundness in PIC vocabulary);
-then a thin surface syntax so `fieldrun export --logic` round-trips through the formal semantics.*
+*Next build targets (the surface): a thin `pic`-LP surface syntax so `fieldrun export --logic`
+round-trips through the formal `T_P`/`lfp` semantics; and the DCG-style grammar layer (§7.5) for the
+recursive fragment, compiling to position-indexed clauses.*

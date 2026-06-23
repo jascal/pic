@@ -582,15 +582,21 @@ PIC has one important parameter that the proofs **do not** pin down, plus two op
 - **`τ★` functional form** *(open — empirical, awaiting data).* The cross-model law is refuted
   (capacity/depth-bound, above); the precise functional form `r_eff = f(nb, depth, H)` awaits the
   large-N (14m→72B) sweep on bigger hardware. Not a kernel question.
-- **`lfp(layer program) = model decode`** *(open).* PIC-LP (`PIC_LP.md`) proves the pieces — the operator,
-  the least model, demand-closure, the recursion — but a single end-to-end theorem that the lfp of the
-  *full layer program* equals the model's decode is not yet stated.
+- ~~**`lfp(layer program) = model decode`**~~ *(now **proved**, `PIC_Forward.thy`).* The forward pass is
+  the least fixpoint of a layered Datalog program (atom `(ℓ,x)` = "residual at layer ℓ is `x`"; the
+  embedding is the fact `(0,r₀)`; each layer is a clause `(ℓ+1, step ℓ x) ⟸ (ℓ, x)`). `lfp_is_trajectory`
+  proves `answer(Player) = {(ℓ, Rℓ) | ℓ}` **exactly** (⊇ by induction, ⊆ via `answer_least` on the
+  trajectory-as-model), so the lfp *is* the forward pass; `lfp_determines` pins the final-layer residual
+  uniquely; and `lfp_decode_logits` (in `pic_frame`) shows the model logits are the frame read-out of the
+  lfp's final fact — so the lfp determines the decode. `step` is abstract; the encoder is the instance.
 
 **What this round closed** (so the open set is honest): the generator-side **superposition** bound is now
 proved on the explicit encoder (`encoder_superposition`), the **margin certificate** is self-contained in
-`PIC_Logic`, and the **LP metatheory** (operator, least model, magic-sets, unbounded recursion) is
-kernel-checked (`PIC_Logic.thy`). `pic_core` now covers the full §5 theorem set except the quantitative
-Welch floor (left to `Welch.thy`).
+`PIC_Logic`, the **LP metatheory** (operator, least model, magic-sets, unbounded recursion) is
+kernel-checked (`PIC_Logic.thy`), and the **forward pass = lfp** end-to-end theorem is proved
+(`PIC_Forward.thy`). `pic_core` now covers the full §5 theorem set except the quantitative Welch floor
+(left to `Welch.thy`). The only remaining opens are the three above (coherence⇒margin's last implication,
+global irreducibility, τ★'s functional form) — two empirical/data-bound, one possibly genuinely hard.
 
 ---
 
