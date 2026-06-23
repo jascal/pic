@@ -306,6 +306,34 @@ support. `μ_t` is the **unanimity** count: high `μ_t` = retrieved, `μ_t = 0` 
 over-complete frame `nₚ > d`); the ratio `FP / W` reports frame quality, `= 1` at a Welch-optimal
 (equiangular tight) frame. These are the quantities `pil`'s frame-side objective drives.
 
+### 4.3 The encoder (formal model of the encode side)
+
+The encode side has an explicit formal model — kernel-checked in i-orca `PIC_Core.thy` (`locale
+pic_encoder`). The residual is **factored, not given**: on input `x`,
+
+> `enc(x) = Σ_{k∈K} g_k(x) · a_k`,     `L(v; x) = ⟨enc(x), U_v⟩ + b_v = Σ_k g_k(x)·⟨a_k, U_v⟩ + b_v`
+
+with **`K`** a finite set of **rules** (neurons / attention slots), **`a_k ∈ H`** their **fixed write
+directions** (the output-projection columns), and **`g_k(x) ∈ ℝ`** the **input-dependent gates**
+(activations). This expresses *any* transformer block: a block's residual write is `W_out · (input-
+dependent vector)` — fixed output columns `a_k` gated by an input coefficient `g_k(x)` — for **MLP and
+attention alike**. The gate `g_k(x)` is left **uninterpreted**: PIC models the *linear* write/read
+algebra (`⟨a_k, U_v⟩` is rule `k`'s incidence, `▷`), and leaves the nonlinear gate compute as the
+un-modelled forge tax. So the encoder **sharpens** the boundary rather than enlarging the calculus.
+
+Three things are proved about it (the generator side made first-class):
+- **encode→decode composition** (`Lx_gated_incidence`): the whole forward pass is one PIC term — a gated
+  sum of fixed rule-incidences.
+- **routing rank** (`routing_rank`, `routing_rank_dim`): for *every* input, `enc(x) ∈ span{a_k}`, of
+  dimension `≤ min(|K|, d)` — superposition is forced when rules exceed the ambient dimension (§5.2/§5.3
+  are now properties of this object).
+- **slice = `pic`** (`encoder_slice_logit`, via `interpretation`): every fixed-input slice of an encoder
+  **is** a `pic` source-model (sources `d_k = g_k(x)·a_k`), and its logit equals `L(v;x)`. So `pic` is the
+  fixed-input restriction; the encoder adds the input axis and the write/gate factorisation.
+
+These are the quantities `pil`'s frame-side objective drives; a learner that *also* trained the gates /
+write directions would be working this encode side (the routing-rank/Welch regime).
+
 ---
 
 ## 5. The theorems (what is proved)
@@ -474,12 +502,23 @@ pieces already exist across the program and only need the algebra of §2 to name
 
 | logic programming | PIC | already in the program |
 |---|---|---|
-| atoms / facts | incidences `j ▷ v` valued in `R_T` | `fieldrun --pil-dump` (the `contrib` matrix) |
-| rule `head ⟸ body` | coalition `P ⊢ v` (a `⊗`-monomial over body sources) | the turnstile §2.5 |
+| rules / clauses (the program) | rule incidences `⟨a_k, U_v⟩` — `head ⟸ body` over the **fixed** rule bank | `pic_encoder` (§4.3) |
+| ground facts on input `x` (the EDB) | the **gated rule-fires** `g_k(x)·a_k` of the encoder | `pic_encoder.enc` (§4.3); `fieldrun --pil-dump` `contrib` |
+| atoms / fact weights | incidences `j ▷ v` valued in `R_T` | the `contrib` matrix |
+| coalition / derivation | `P ⊢ v` (a `⊗`-monomial over body sources) | the turnstile §2.5 |
 | answer / model | the lfp of the immediate-consequence operator `T_P` | i-orca `ProvableOpt_Common` |
 | query | the decode `⊤(S) = ⊕_T`-argmax over propositions | `fieldrun` decode |
 | magic-sets / demand transform | **demand-closure** `lfp(restrict T D) = lfp T ∩ D` *(proved)* | §5.6, `ProvableOpt.thy` |
 | program emission | a recursive Soufflé/Datalog program | `fieldrun --datalog` (`LOGIC_EXPORT`) |
+
+**The encoder (§4.3) is the fact-generating (EDB) layer** — this is why the LP formalism needs it. The
+fixed rule bank `{a_k}` (with incidences `⟨a_k, U_v⟩`) is the **program** (the clauses, input-independent);
+the input `x` fires the gates `g_k(x)`, producing the **weighted ground facts** `g_k(x)·a_k` that the
+decode (query) then resolves. So the split is clean: *clauses are the frame-side geometry of the rule bank*
+(static), *the EDB is the encoder's per-input gated fires* (dynamic), *the query is the decode*. Without an
+explicit encoder there is no place for the input-to-EDB step — exactly the gap an executable `pic`-LP would
+have to fill (`PIC_Core.encoder_slice_logit` is the formal statement that each input grounds the program to
+a `pic` model).
 
 The **semiring chooses the logic**: `T = 0` (tropical) is shortest-path / Viterbi / min-cost logic
 programming (the geometry/optimization reading); `T = 1` (log) is **probabilistic** logic programming

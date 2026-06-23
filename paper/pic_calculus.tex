@@ -228,10 +228,31 @@ token because they share the monomials. Every margin/decode theorem of \S\ref{se
 therefore transfers verbatim to the operating model's argmax; the $T$-dependent part is exactly the
 confidence (entropy, margins), the locus of the forge tax.
 
-\section{Frame versus decode}\label{sec:sep}
+\section{Encode, frame, decode}\label{sec:sep}
 
-Every PIC quantity is either \emph{frame-side} (a function of $\{U_v\}$ alone---intrinsic, label-free)
-or \emph{decode-side} (a function of the aggregate $L$ and a target, evaluated in the chosen semiring).
+PIC is a sandwich of three roles: the \emph{encoder} writes the residual, the \emph{frame} is the shared
+dictionary, and the \emph{decoder} reads it out. The encode side has an explicit model
+(machine-checked, \texttt{PIC\_Core.thy}).
+
+\begin{definition}[Encoder]\label{def:enc}
+A PIC encoder fixes a finite rule set $K$, fixed write directions $a:K\to\HH$, and input-dependent gates
+$g:K\to(X\to\RR)$. On input $x$ the residual is the gated sum $\operatorname{enc}(x)=\sum_{k\in K}g_k(x)\,a_k$,
+and the logit is $L(v;x)=\inner{\operatorname{enc}(x)}{U_v}+b_v=\sum_{k\in K}g_k(x)\inner{a_k}{U_v}+b_v$.
+\end{definition}
+
+This expresses any transformer block: a block's residual write is $W_{\mathrm{out}}\cdot(\text{input
+vector})$---fixed output columns $a_k$ gated by an input coefficient $g_k(x)$---for MLP and attention
+alike. The gate $g_k(x)$ is left \emph{uninterpreted}: PIC formalizes the linear write/read algebra
+($\inner{a_k}{U_v}$ is rule $k$'s incidence) and leaves the nonlinear gate as the un-modelled forge tax,
+so the encoder sharpens rather than enlarges the calculus. Three facts are proved \proved{}: the forward
+pass is one PIC term ($L(v;x)=\sum_k g_k(x)\inner{a_k}{U_v}+b_v$); every encoded residual lies in
+$\operatorname{span}\{a_k\}$ of dimension $\le\min(|K|,d)$ (routing rank, now a property of the encoder---
+\S\ref{sec:thm}); and every fixed-input slice \emph{is} a source model (Def.~\ref{def:agg}) with
+$d_k=g_k(x)a_k$. The remaining two roles split every other quantity:
+
+Every other PIC quantity is either \emph{frame-side} (a function of $\{U_v\}$ alone---intrinsic,
+label-free) or \emph{decode-side} (a function of the aggregate $L$ and a target, evaluated in the chosen
+semiring).
 
 \paragraph{Decode-side.}
 margin $m(t)=L(t)-\max_{v\neq t}L(v)$;\quad
