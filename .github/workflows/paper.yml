@@ -1,0 +1,39 @@
+name: paper
+
+# Compile the PIC formalism paper and publish the PDF as a build artifact on every push.
+# This both (a) verifies the LaTeX still compiles and (b) makes the current PDF downloadable
+# from the run's Artifacts without anyone needing a local TeX install.
+
+on:
+  push:
+    paths:
+      - 'paper/**'
+      - '.github/workflows/paper.yml'
+  pull_request:
+    paths:
+      - 'paper/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile pic_calculus.tex
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: pic_calculus.tex
+          working_directory: paper
+          # latexmk drives bibtex for references.bib; full TeX Live image ships stmaryrd etc.
+          latexmk_use_xelatex: false
+
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: pic_calculus-pdf
+          path: paper/pic_calculus.pdf
+          if-no-files-found: error

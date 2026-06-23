@@ -44,8 +44,17 @@ section here is updated and the version bumped.
 ## Build the paper
 
 ```bash
-cd paper && latexmk -pdf pic_calculus.tex
+make paper          # -> paper/pic_calculus.pdf   (needs latexmk + pdflatex + stmaryrd)
+make clean
 ```
+
+CI builds it on every push (`.github/workflows/paper.yml`) and publishes the PDF as a downloadable
+**build artifact** (`pic_calculus-pdf`) — so you can grab the current paper from the latest run's
+Artifacts without a local TeX install, and the workflow also verifies the LaTeX still compiles.
+
+## License
+
+Apache License 2.0 — see [`LICENSE`](./LICENSE). (Same as the sibling repos; the whole program is public.)
 
 ## Proof-status discipline
 
