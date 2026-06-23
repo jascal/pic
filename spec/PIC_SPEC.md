@@ -597,7 +597,10 @@ PIC has one important parameter that the proofs **do not** pin down, plus two op
   real-closed-field / SMT. This is the regime fieldrun *already operates in* — so the negative result
   **vindicates** the native-frame local-irreducibility approach (§5.7) as the correct notion and points
   the forge-tax certificate at the fixed-activation problem. *(Resolution via an adversarial-collaborator
-  constructive argument, 2026-06.)*
+  constructive argument, 2026-06.)* **Formulation drafted: [`forge_tax_certificate.md`](./forge_tax_certificate.md)**
+  — fix the measured contributions `d_j(x)`, free the decoder frame `U`; faithfulness + single-source
+  become an **LP** with Farkas infeasibility duals as the certificate (poly-time); a stronger bilinear
+  variant additionally frees the write-directions; runs on real `fieldrun --source-dump` data.
 - **`τ★` functional form** *(open — empirical, awaiting data).* The cross-model law is refuted
   (capacity/depth-bound, above); the precise functional form `r_eff = f(nb, depth, H)` awaits the
   large-N (14m→72B) sweep on bigger hardware. Not a kernel question.
