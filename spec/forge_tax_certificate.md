@@ -117,6 +117,41 @@ sign pattern of the margins `(⟨d_j(x₀), U_{t_{x₀}} − U_v⟩)_{v∈W}` be
 
 ---
 
-*Next: implement `fieldrun --source-dump` (raw `d_j(x)`); a small LP harness (`pil/experiments/`) for the
-§3 certificate; and the sign-rank pre-filter. The i-orca side can kernel-check the soundness of the Farkas
-certificate (LP-infeasibility ⟹ k-irreducible) as a general lemma over the fixed-contribution polyhedron.*
+## 7. What we found — the free-frame LP is **vacuous** (and why that's informative)
+
+Both pieces are built: `fieldrun --source-dump` (rope + neox; recon 1.00) and the LP harness
+(`pil/experiments/forge_tax_certificate.py`, `load_source_dump`). Running the §3 certificate on Qwen-0.5B
+(40 held-out positions) gives a clean **negative** result:
+
+> **0/40 positions are 1-irreducible** — down to margin 0.09. Every position is reducible *via its dominant
+> block*: the late-MLP write has `‖d̃_dom‖ ≈ ‖r_x‖`, so "that block alone decodes `x₀`" is ≈ faithfulness
+> at `x₀` itself → always feasible.
+
+The harness is **correct**, not buggy: the faithfulness-only LP is feasible (the model's own frame
+witnesses it), and the small blocks *do* return infeasible (only ~27 of 49 blocks are feasible per
+position). It is the **free frame** that is too permissive — with a free per-token `U'`, a token can be
+re-pointed onto almost any sizeable block direction.
+
+This **re-confirms two things already established**, from a third angle:
+- **Grok's negative result** (§ above / `PIC_SPEC.md` §7): decode-composedness is **frame-relative**. Even
+  with the contributions *fixed*, a free frame removes single-source composedness.
+- **The decode-circuit finding**: the decode is a **frame-reducible late-MLP readout** (median 1–3 blocks).
+  The dominant-block reducibility is exactly that result re-derived through the LP.
+
+**Upshot (the real conclusion).** The forge tax is **not** certifiable as decode single-source
+irreducibility under a free frame — it does not live in the *readout's frame-representability*. It lives in
+**building the residual** — the causal stack that the late MLP reads out (`mass ≠ causation`, measured by
+`fieldrun --block-ablate`: early layers carry ~0% direct mass yet are ~99% necessary). So the meaningful
+"this was computed" certificate is **causal, not representational** — which the existing block-ablation
+already supplies. The representational angle is what's vacuous.
+
+**If a representational certificate is still wanted**, it must constrain the realization's *shared*
+structure: fix the frame `U` (the model's) and free the **write directions `A`, shared across all
+positions** (`r_x = A g(x)`, an LP in `A`) — at **neuron** granularity, where sources are genuinely
+rank-1 (`a_k = W_out` column, `g_k(x)` the activation). Blocks are not rank-1, so the free-block-frame LP
+cannot express that coupling. The neuron-level version is a much finer/larger dump and an open follow-up;
+the §3 LP is a *sound relaxation* of it, and the relaxation being vacuous tells us the coupling — not the
+fixed contributions — is what would carry the certificate.
+
+*Evidence: `pil/results/forge_tax_certificate.txt`. Harness + `--source-dump` are the reusable seam; the
+objective is the part to strengthen.*
