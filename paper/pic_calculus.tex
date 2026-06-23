@@ -414,18 +414,23 @@ separation is its type discipline: frame-side clauses (what overlaps what) plus 
 
 The packing exponent that binds in practice is an effective rank $\tau^\star$, not the ambient $d$. A
 natural conjecture, $\tau^\star\approx\min(e^{H},d)$ (effective output support sets the rank), is
-\emph{refuted in the cross-model direction}. Measured on a seven-model sweep (Pythia 70m--1.4b, Qwen
-0.5B/1.5B) via the analysis seam, the architecture-fair effective decode-block count $r_{\mathrm{eff}}$
-\emph{anti-correlates} with $e^{H}$ (Pearson $-0.71$) and \emph{tracks the block count} $n_b=2L+1$ (Pearson
-$+0.75$), depth, and width: larger, more confident models use \emph{more} effective blocks, not fewer. The
-clean dissociation is that Pythia-1b (16 layers, \emph{more} parameters) uses fewer effective blocks than
-Pythia-410m (24 layers, \emph{fewer} parameters), so it is depth/$n_b$---not parameter count and not
-entropy---that sets $r_{\mathrm{eff}}\approx(0.4\text{--}0.5)\,n_b$ within an architecture. A genuine but
-modest \emph{within-model} effect survives (higher-entropy tokens use somewhat more blocks; Spearman
-$\approx0.3$--$0.4$ in capable models). So $\tau^\star$ is real but capacity/depth-bound rather than
-entropy-bound; its functional form is \open{}. We record this as the cleanest current example of the
-discipline the tags enforce: a plausible law, measured, and reported by what the data support rather than
-by what would have been tidy.
+\emph{refuted}, robustly, on a fourteen-model sweep to 72B (Pythia 14m--12b, Qwen 0.5B--72B; reconstruction
+$1.00$ throughout). The architecture-fair effective decode-block count $r_{\mathrm{eff}}$ \emph{anti}-correlates
+with $e^{H}$ (Pearson $-0.54$) and associates with \emph{capacity} (hidden Spearman $+0.63$, $n_b$/depth
+$+0.58$); the ratio $r_{\mathrm{eff}}/e^{H}$ climbs monotonically $0.07\to1.74$ across the ladder---larger,
+more confident models use \emph{more} effective blocks, not fewer.
+
+But there is \emph{no clean functional form}: it is \textbf{architecture-dependent}. Within Pythia,
+$r_{\mathrm{eff}}\approx(0.4\text{--}0.5)\,n_b$ and grows with depth ($8\to30$ as $n_b:13\to73$); within
+Qwen, $r_{\mathrm{eff}}$ is \emph{flat} ($\sim11\text{--}17$) while the block \emph{fraction} shrinks
+$0.27\to0.10$ from 0.5B to 72B. (The once-tempting ``$\approx$12 scale-invariant blocks'' reading was a
+Qwen raw-PR artifact---Qwen's raw PR is flat $7.7\text{--}13.8$ to 72B, while Pythia's grows to $37$.) A
+genuine but modest \emph{within-model} effect survives (higher-entropy tokens use somewhat more blocks;
+Spearman $\approx0.2\text{--}0.47$ in capable models)---a second-order grain, not the cross-model driver.
+So $\tau^\star$ is capacity-associated rather than entropy-bound, with \emph{no universal law} across
+architectures; its functional form is \open{}. We keep it as the sharpest example of the discipline the
+tags enforce: a plausible law, measured to 72B, and reported by what the data support---including the
+architecture split---rather than by what would have been tidy.
 
 \section*{Provenance of claims}
 \proved{} statements are machine-checked in the i-orca Isabelle corpus
