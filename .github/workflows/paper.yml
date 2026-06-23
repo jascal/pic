@@ -72,6 +72,8 @@ jobs:
                   nothing to tilt toward.</li>
               <li><a href="interactive/pic-margin-scope-3d-interior.html">Margin scope &middot; 3D interior</a>
                   &mdash; the vectors inside the sphere, packing and the Welch floor in 3D.</li>
+              <li><a href="interactive/pic-semiring-worked-example.pdf">Semiring worked example</a> (PDF)
+                  &mdash; a step-by-step walkthrough of the PIC semiring.</li>
             </ul>
             <embed class="pdf" src="pic_calculus.pdf" type="application/pdf">
           </body>
