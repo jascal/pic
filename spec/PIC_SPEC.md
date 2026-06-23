@@ -537,6 +537,12 @@ fact-weight oracle — the analysis (`fieldrun --datalog`), the semantics (i-orc
 and the learnable weights (`pil`) are the three components, already built; `pic` is their shared grammar.
 *(This is the `LOGIC_EXPORT` / `PROVABLE_OPT` thread, given its algebraic spine.)*
 
+> **Full treatment: [`PIC_LP.md`](./PIC_LP.md)** — the language spec (syntax grounded in the actual
+> `fieldrun export --logic` emission, the `T_P`/lfp semantics, the semiring modes, the two recursion
+> sources, demand-closure = magic-sets, and a DCG-style grammar surface for the recursive fragment),
+> with the kernel theory in i-orca `examples/pic_core/PIC_Logic.thy` (`Tp`/`answer`/`reach_all`/
+> `demand_restrict_lfp`/`decode_magic_sets_lossless`, all kernel-checked, 0 sorry).
+
 ---
 
 ## 7. Empirical parameters & open questions
