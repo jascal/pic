@@ -5,6 +5,7 @@
 \usepackage{mathtools}
 \usepackage{stmaryrd} % \llbracket \rrbracket for the coalition bracket
 \usepackage{booktabs}
+\usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{enumitem}
 
@@ -420,17 +421,36 @@ with $e^{H}$ (Pearson $-0.54$) and associates with \emph{capacity} (hidden Spear
 $+0.58$); the ratio $r_{\mathrm{eff}}/e^{H}$ climbs monotonically $0.07\to1.74$ across the ladder---larger,
 more confident models use \emph{more} effective blocks, not fewer.
 
-But there is \emph{no clean functional form}: it is \textbf{architecture-dependent}. Within Pythia,
+But there is \emph{no clean functional form}: it is \textbf{architecture-dependent}
+(Figure~\ref{fig:arch}A). Within Pythia,
 $r_{\mathrm{eff}}\approx(0.4\text{--}0.5)\,n_b$ and grows with depth ($8\to30$ as $n_b:13\to73$); within
 Qwen, $r_{\mathrm{eff}}$ is \emph{flat} ($\sim11\text{--}17$) while the block \emph{fraction} shrinks
 $0.27\to0.10$ from 0.5B to 72B. (The once-tempting ``$\approx$12 scale-invariant blocks'' reading was a
 Qwen raw-PR artifact---Qwen's raw PR is flat $7.7\text{--}13.8$ to 72B, while Pythia's grows to $37$.) A
 genuine but modest \emph{within-model} effect survives (higher-entropy tokens use somewhat more blocks;
 Spearman $\approx0.2\text{--}0.47$ in capable models)---a second-order grain, not the cross-model driver.
-So $\tau^\star$ is capacity-associated rather than entropy-bound, with \emph{no universal law} across
-architectures; its functional form is \open{}. We keep it as the sharpest example of the discipline the
+The same architecture split shows up in a \emph{wholly independent, causal} probe---the convergence depth
+$k^\star/L$ (the smallest layer prefix whose recompute already reproduces the decode), which declines with
+scale in Pythia but not Qwen (Figure~\ref{fig:arch}B)---so it is a property of the models, not an artifact
+of the attribution measure. So $\tau^\star$ is capacity-associated rather than entropy-bound, with
+\emph{no universal law} across architectures; its functional form is \open{}. We keep it as the sharpest example of the discipline the
 tags enforce: a plausible law, measured to 72B, and reported by what the data support---including the
 architecture split---rather than by what would have been tidy.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/arch_dependence.pdf}
+  \caption{Two independent probes of how much of the model the next-token decode engages, both splitting
+  Pythia from Qwen. \textbf{(A)} \emph{Attribution}: the effective number of decode blocks
+  $r_{\mathrm{eff}}$ across the $\tau^\star$ sweep (14m--72B, reconstruction $1.00$): within Pythia it
+  grows ($\approx0.5\,n_b$), within Qwen it is flat ($\sim$11--17) as the block fraction shrinks to
+  $0.10$. \textbf{(B)} \emph{Causal}: the convergence depth $k^\star/L$ (\texttt{--converge-depth}) ---
+  the smallest layer prefix whose recompute reproduces the decode. Deep computation is the norm
+  ($k^\star/L\geq0.8$); Pythia's fraction declines with scale while Qwen's does not. That two unrelated
+  measures --- one attributional, one causal --- agree on the architecture split is the load-bearing
+  point: there is no universal scaling law for decode engagement.}
+  \label{fig:arch}
+\end{figure}
 
 \section*{Provenance of claims}
 \proved{} statements are machine-checked in the i-orca Isabelle corpus

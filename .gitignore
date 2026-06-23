@@ -8,7 +8,9 @@ paper/*.blg
 paper/*.out
 paper/*.toc
 paper/*.synctex.gz
-*.pdf
+paper/pic_calculus.pdf
+# committed source assets (figures) are NOT build artifacts — keep them tracked
+!paper/figures/
 
 # editor / OS
 *.swp
