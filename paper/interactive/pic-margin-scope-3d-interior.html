@@ -1,0 +1,502 @@
+<!--
+  PIC Margin Scope · 3D interior view (M = 3)
+  Translucent sphere carrying the margin field g(w) and the spherical power
+  diagram, with the three deciding vectors drawn as rays THROUGH the interior:
+  the target f_t, the steering w, and the currently-loudest competitor f_c.
+  Projection "shadows" along each ray make the margin a contest of two lengths:
+     g(w) = ⟨w,f_t⟩ − ⟨w,f_c⟩   (target shadow − competitor shadow)
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PIC Margin Scope · interior</title>
+<style>
+  :root{
+    --bg:#060a10; --panel:#0c121b; --panel-2:#0f1722;
+    --rule:#1c2836; --rule-2:#26384b;
+    --ink:#dce5f0; --ink-dim:#7d8ea2; --ink-faint:#536273;
+    --target:#46e3d0; --comp:#e6a14e; --steer:#c07dff; --opt:#8be36b; --warn:#ff6b7a;
+    --mono: ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:radial-gradient(1200px 600px at 80% -10%, #0b1a22 0%, transparent 60%), var(--bg);
+    color:var(--ink); font-family:var(--sans); line-height:1.5; -webkit-font-smoothing:antialiased; padding:24px;}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{margin-bottom:20px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--target);display:flex;align-items:center;gap:10px}
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--target);opacity:.7}
+  h1{font-size:clamp(24px,4.4vw,38px);font-weight:650;letter-spacing:-.015em;margin:.35em 0 .15em}
+  .lede{color:var(--ink-dim);max-width:66ch;font-size:15px}
+  .lede code{font-family:var(--mono);color:var(--ink);font-size:.92em}
+
+  .stage{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;margin-top:22px}
+  .viewport{position:relative;background:radial-gradient(120% 120% at 50% 18%, #122231 0%, var(--panel) 62%);
+    border:1px solid var(--rule);border-radius:12px;overflow:hidden;min-height:440px}
+  #gl{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+  #gl.grabbing{cursor:grabbing}
+  .vp-label{position:absolute;top:12px;left:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);pointer-events:none}
+  .keys{position:absolute;right:14px;top:12px;font-family:var(--mono);font-size:10.5px;text-align:right;pointer-events:none;line-height:1.7}
+  .keys b{font-weight:600}
+  .k-t{color:var(--target)}.k-c{color:var(--comp)}.k-w{color:var(--steer)}.k-o{color:var(--opt)}
+  .legend{position:absolute;left:14px;bottom:12px;font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);pointer-events:none}
+  .grad{height:7px;width:150px;border-radius:4px;margin-bottom:6px;background:linear-gradient(90deg,#0d0d1c,#172650,#1a5668,#29a89e,#4bdcc7,#a6f78d)}
+  .gradends{display:flex;justify-content:space-between;width:150px;color:var(--ink-faint)}
+  .fallback{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;font-family:var(--mono);font-size:13px;color:var(--warn)}
+
+  .side{display:flex;flex-direction:column;gap:12px}
+  .probe{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--rule-2);border-radius:12px;padding:13px 15px}
+  .probe .ttl{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px}
+  .pline{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:13px;margin:5px 0}
+  .pline .lab{color:var(--ink-dim)} .pline .val{font-variant-numeric:tabular-nums;font-weight:600}
+  .pline.tgt .val{color:var(--target)} .pline.cmp .val{color:var(--comp)}
+  .pline.mar{border-top:1px solid var(--rule);margin-top:9px;padding-top:9px}
+  .pline.mar .lab{color:var(--ink)} .pline.mar .val{color:var(--ink);font-size:15px}
+  .decide{margin-top:9px;font-family:var(--mono);font-size:11.5px;padding:7px 9px;border-radius:7px;text-align:center}
+  .decide.win{background:#0e2420;color:var(--target);border:1px solid #1c4a40}
+  .decide.lose{background:#241a0e;color:var(--comp);border:1px solid #4a371c}
+
+  .readouts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:11px 13px}
+  .stat .k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+  .stat .v{font-family:var(--mono);font-size:21px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums}
+  .stat.t .v{color:var(--target)} .stat.o .v{color:var(--opt)}
+  .stat .sub{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);margin-top:2px}
+  .gap-pos .v{color:var(--opt)!important}.gap-zero .v{color:var(--ink-dim)!important}
+
+  .controls{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:13px 14px}
+  .grouplabel{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);display:block;margin-bottom:9px}
+  .presets{display:flex;gap:7px;flex-wrap:wrap}
+  button.preset,button.act{font-family:var(--mono);font-size:11.5px;background:var(--panel-2);color:var(--ink-dim);border:1px solid var(--rule-2);border-radius:8px;padding:7px 10px;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+  button.preset:hover,button.act:hover{color:var(--ink);border-color:var(--ink-faint)}
+  button.preset.on{color:var(--bg);background:var(--target);border-color:var(--target);font-weight:600}
+  button.act.steer{color:var(--steer)} button.act.opt{color:var(--opt)}
+  .actrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);align-items:center}
+  .toggle{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--ink-dim);cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--target)}
+  .hint{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:11px;line-height:1.6}
+  .hint .tg{color:var(--target)}.hint .vi{color:var(--steer)}
+  input[type=range]{-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:var(--rule-2);outline:none;flex:1;min-width:90px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--steer);border:2px solid var(--bg);cursor:pointer;box-shadow:0 0 7px var(--steer)}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--steer);border:2px solid var(--bg);cursor:pointer}
+  .prow{display:flex;align-items:center;gap:10px}
+  .prow .grouplabel{margin:0;white-space:nowrap}
+  .pout{font-family:var(--mono);font-size:11px;color:var(--ink);min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
+
+  .notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+  .note{background:var(--panel);border:1px solid var(--rule);border-radius:11px;padding:14px 15px}
+  .note h3{margin:0 0 6px;font-size:13px;letter-spacing:.04em;font-family:var(--mono);text-transform:uppercase;color:var(--ink)}
+  .note p{margin:0;font-size:13px;color:var(--ink-dim)} .note p+p{margin-top:8px}
+  .note .num{font-family:var(--mono);color:var(--target)} .note em.f{font-family:var(--mono);color:var(--ink);font-style:normal}
+  footer{margin-top:20px;font-family:var(--mono);font-size:11px;color:var(--ink-faint);line-height:1.7}
+  footer b{color:var(--ink-dim);font-weight:600}
+  @media (max-width:860px){
+    body{padding:16px}.stage{grid-template-columns:1fr}.viewport{min-height:380px;aspect-ratio:1/1}.notes{grid-template-columns:1fr}
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">PIC · margin geometry · interior view</div>
+    <h1>The vectors inside the sphere</h1>
+    <p class="lede">
+      The shell is translucent so you can see the actual vectors, not just their tips. Three rays decide
+      everything: the target <code style="color:var(--target)">f_t</code>, your steering
+      <code style="color:var(--steer)">w</code>, and the currently loudest competitor
+      <code style="color:var(--comp)">f_c</code>. The bright stretch along each ray is its
+      <em>projection</em> of <code>w</code> — and the margin is just the target shadow minus the competitor shadow.
+      Steer <code>w</code> and watch which competitor binds.
+    </p>
+  </header>
+
+  <div class="stage">
+    <div class="viewport">
+      <canvas id="gl"></canvas>
+      <div class="vp-label" id="cfgName">tetrahedron · n=4</div>
+      <div class="keys">
+        <b class="k-t">━ f_t</b> target ray<br>
+        <b class="k-w">━ w</b> steering ray<br>
+        <b class="k-c">━ f_c</b> binding rival<br>
+        <b class="k-o">◆ opt</b> optimum
+      </div>
+      <div class="legend"><div class="grad"></div><div class="gradends"><span id="gLo">g lo</span><span id="gHi">g hi</span></div></div>
+      <div class="fallback" id="fallback">3D renderer couldn't load (needs network for Three.js).</div>
+    </div>
+
+    <div class="side">
+      <div class="probe">
+        <div class="ttl">read at current w</div>
+        <div class="pline tgt"><span class="lab">⟨w, f_t⟩ &nbsp;target shadow</span><span class="val" id="pWt">1.000</span></div>
+        <div class="pline cmp"><span class="lab" id="cmpLab">⟨w, f_c⟩ &nbsp;loudest rival</span><span class="val" id="pWc">−0.333</span></div>
+        <div class="pline mar"><span class="lab">g(w) &nbsp;margin here</span><span class="val" id="pGw">1.333</span></div>
+        <div class="decide win" id="decide">decision: f_t wins ✓</div>
+      </div>
+
+      <div class="readouts">
+        <div class="stat t"><div class="k">m_MF · matched</div><div class="v" id="vMF">1.333</div><div class="sub">w = f_t</div></div>
+        <div class="stat o"><div class="k">m_opt · best</div><div class="v" id="vOpt">1.333</div><div class="sub" id="optSub">on the sphere</div></div>
+        <div class="stat" id="gapStat"><div class="k">steering gain</div><div class="v" id="vGap">0.000</div><div class="sub" id="gapNote">symmetric → none</div></div>
+        <div class="stat"><div class="k">max coherence</div><div class="v" id="vCoh">−0.333</div><div class="sub" id="cohNote">loudest f_i</div></div>
+      </div>
+
+      <div class="controls">
+        <span class="grouplabel">configuration</span>
+        <div class="presets" id="presets">
+          <button class="preset on" data-p="tetra">Tetrahedron · n=4</button>
+          <button class="preset" data-p="octa">Octahedron · n=6</button>
+          <button class="preset" data-p="icosa">Icosahedral ETF · n=6</button>
+          <button class="preset" data-p="cube">Cube · n=8</button>
+          <button class="preset" data-p="skewed">Skewed · steering wins</button>
+          <button class="preset" data-p="random">Random · n=6</button>
+        </div>
+        <div class="actrow">
+          <button class="act steer" id="snapMF">w → f_t</button>
+          <button class="act opt" id="snapOpt">w → optimal</button>
+          <label class="toggle"><input type="checkbox" id="spin"> auto-spin</label>
+          <label class="toggle"><input type="checkbox" id="tess" checked> power diagram</label>
+          <label class="toggle"><input type="checkbox" id="shell" checked> shell</label>
+        </div>
+        <div class="actrow prow">
+          <span class="grouplabel">perturb off symmetry</span>
+          <input type="range" id="perturb" min="0" max="100" value="0">
+          <output class="pout" id="perturbOut">0°</output>
+          <button class="act" id="reroll">reroll</button>
+        </div>
+        <div class="hint">click a <span class="tg">target dot</span> to retarget · click open surface to drop <span class="vi">w</span> · drag to rotate · perturb to break symmetry</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>The two shadows</h3>
+      <p>Drop a perpendicular from <em class="f">w</em>'s tip onto a feature ray; where it lands is the projection
+        <em class="f">⟨w,f_i⟩</em> — the bright segment from the center. The margin is the
+        <span style="color:var(--target)">target shadow</span> minus the
+        <span style="color:var(--comp)">rival shadow</span>. A negative rival shadow (it points backward) <em>helps</em>.</p>
+    </div>
+    <div class="note">
+      <h3>Steering = swinging w</h3>
+      <p>Move <em class="f">w</em> and both shadows change. Tilt toward the target and its shadow grows; tilt
+        away from the binding rival and that shadow shrinks. The optimum is the swing that maximizes the
+        difference — and in symmetric frames it's already straight down <em class="f">f_t</em>.</p>
+    </div>
+    <div class="note">
+      <h3>The rival switches</h3>
+      <p>Steer <em class="f">w</em> far enough and the amber ray jumps to a different competitor — you've crossed a
+        power-diagram border into another cell. At that border two rivals tie and the margin pinches; that's
+        what bounds how far steering can take you.</p>
+    </div>
+  </div>
+
+  <footer>
+    <b>Welch floor (M=3):</b> <span id="welch">μ ≥ √((n−3)/(3(n−1)))</span> · coherence magnitude. &nbsp;
+    <b>Frame operator</b> S = Σ f_if_iᵀ <span id="frameOp"></span> <span id="tightFlag"></span>. &nbsp;
+    Small n is clearest here — the interior stays uncluttered and every shadow is easy to follow.
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  if(typeof THREE==='undefined'){ document.getElementById('fallback').style.display='flex'; return; }
+
+  const norm3=v=>{const n=Math.hypot(v[0],v[1],v[2])||1;return [v[0]/n,v[1]/n,v[2]/n];};
+  const dot3=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  const cross3=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const scal=(v,k)=>[v[0]*k,v[1]*k,v[2]*k];
+
+  const PHI=(1+Math.sqrt(5))/2;
+  const CONFIGS={
+    tetra:{name:'tetrahedron · n=4',target:0,V:[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]]},
+    octa:{name:'octahedron · n=6',target:0,V:[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]},
+    icosa:{name:'icosahedral ETF · n=6',target:0,V:[[0,1,PHI],[0,-1,PHI],[1,PHI,0],[-1,PHI,0],[PHI,0,1],[PHI,0,-1]]},
+    cube:{name:'cube · n=8',target:0,V:[[1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],[-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1]]},
+    skewed:{name:'skewed · steering wins',target:0,
+      V:[[0,0,1],[Math.sin(50*Math.PI/180),0,Math.cos(50*Math.PI/180)],[0.6,0.3,-0.74],[0.4,-0.6,-0.69]]}
+  };
+  let state={key:'tetra',F:[],base:[],pdir:[],pr:[],perturb:0,target:0,w:[0,0,1],wOnTarget:true,spin:false,tess:true,shell:true};
+
+  const gAt=(F,t,v)=>{const dt=dot3(v,F[t]);let mc=-Infinity;
+    for(let i=0;i<F.length;i++){if(i===t)continue;const d=dot3(v,F[i]);if(d>mc)mc=d;}return dt-mc;};
+  const argmaxComp=(F,t,v)=>{let b=-Infinity,idx=-1;
+    for(let i=0;i<F.length;i++){if(i===t)continue;const d=dot3(v,F[i]);if(d>b){b=d;idx=i;}}return idx;};
+  const maxCoherence=(F,t)=>{let b=-Infinity,idx=-1;
+    for(let i=0;i<F.length;i++){if(i===t)continue;const d=dot3(F[t],F[i]);if(d>b){b=d;idx=i;}}return{val:b,idx};};
+  const mMF=(F,t)=>1-maxCoherence(F,t).val;
+  function fib(i,n){const ga=Math.PI*(3-Math.sqrt(5)),y=1-(i/(n-1))*2,r=Math.sqrt(Math.max(0,1-y*y)),th=ga*i;
+    return [Math.cos(th)*r,y,Math.sin(th)*r];}
+  function mOpt(F,t){let best=-Infinity,bw=F[t].slice(),S=1400;
+    for(let i=0;i<S;i++){const v=fib(i,S),val=gAt(F,t,v);if(val>best){best=val;bw=v;}}
+    let w=bw.slice(),step=0.18;
+    for(let it=0;it<80;it++){const c=argmaxComp(F,t,w);
+      let gr=[F[t][0]-F[c][0],F[t][1]-F[c][1],F[t][2]-F[c][2]];const d=dot3(gr,w);
+      let tg=[gr[0]-d*w[0],gr[1]-d*w[1],gr[2]-d*w[2]];const tn=Math.hypot(tg[0],tg[1],tg[2]);if(tn<1e-7)break;
+      let nw=norm3([w[0]+step*tg[0]/tn,w[1]+step*tg[1]/tn,w[2]+step*tg[2]/tn]);
+      if(gAt(F,t,nw)>gAt(F,t,w))w=nw;else step*=0.62;}
+    return{value:gAt(F,t,w),dir:w};}
+  function frameOp(F){let S=[[0,0,0],[0,0,0],[0,0,0]];
+    for(const f of F)for(let a=0;a<3;a++)for(let b=0;b<3;b++)S[a][b]+=f[a]*f[b];return S;}
+
+  // a fresh irregular frame: random points, lightly repelled so nothing degenerately clumps
+  function randomFrame(n){
+    let P=[];for(let i=0;i<n;i++)P.push(norm3([Math.random()*2-1,Math.random()*2-1,Math.random()*2-1]));
+    for(let it=0;it<45;it++){const G=P.map(()=>[0,0,0]);
+      for(let i=0;i<n;i++)for(let j=0;j<n;j++){if(i===j)continue;
+        const d=[P[i][0]-P[j][0],P[i][1]-P[j][1],P[i][2]-P[j][2]],r2=d[0]*d[0]+d[1]*d[1]+d[2]*d[2]+1e-3;
+        G[i][0]+=d[0]/r2;G[i][1]+=d[1]/r2;G[i][2]+=d[2]/r2;}
+      for(let i=0;i<n;i++)P[i]=norm3([P[i][0]+0.02*G[i][0],P[i][1]+0.02*G[i][1],P[i][2]+0.02*G[i][2]]);}
+    return P;
+  }
+  // pick a random tangent direction + magnitude factor per feature (fixed while sliding)
+  function regenPerturbDirs(){
+    state.pdir=[];state.pr=[];
+    for(const b of state.base){
+      let r=[Math.random()*2-1,Math.random()*2-1,Math.random()*2-1];
+      const d=dot3(r,b);let tg=[r[0]-d*b[0],r[1]-d*b[1],r[2]-d*b[2]];
+      if(Math.hypot(tg[0],tg[1],tg[2])<1e-3){tg=cross3(b,[1,0,0]);if(Math.hypot(tg[0],tg[1],tg[2])<1e-3)tg=cross3(b,[0,1,0]);}
+      state.pdir.push(norm3(tg));state.pr.push(0.4+Math.random()*0.6);
+    }
+  }
+  // f_i = rotate base_i toward its tangent by angle (perturb · r_i); stays unit since base⊥tangent
+  function applyFrame(){
+    state.F=state.base.map((b,i)=>{const a=state.perturb*state.pr[i],c=Math.cos(a),s=Math.sin(a),t=state.pdir[i];
+      return [c*b[0]+s*t[0],c*b[1]+s*t[1],c*b[2]+s*t[2]];});
+  }
+  function refresh(){ applyFrame(); if(state.wOnTarget)state.w=state.F[state.target].slice();
+    buildField();buildEdges();buildMarkers();updateReadouts(); }
+
+  const STOPS=[[0,0.05,0.05,0.11],[0.30,0.09,0.15,0.31],[0.55,0.10,0.34,0.42],[0.75,0.16,0.66,0.62],[0.90,0.29,0.86,0.78],[1,0.65,0.97,0.55]];
+  function fieldColor(t){t=Math.max(0,Math.min(1,t));
+    for(let i=0;i<STOPS.length-1;i++){const a=STOPS[i],b=STOPS[i+1];
+      if(t<=b[0]){const u=(t-a[0])/(b[0]-a[0]||1);return[a[1]+(b[1]-a[1])*u,a[2]+(b[2]-a[2])*u,a[3]+(b[3]-a[3])*u];}}
+    const l=STOPS[STOPS.length-1];return[l[1],l[2],l[3]];}
+
+  // ---------- scene ----------
+  const canvas=document.getElementById('gl');
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(40,1,0.1,100);camera.position.set(0,0,3.5);
+  scene.add(new THREE.AmbientLight(0xffffff,0.95));
+  const dl=new THREE.DirectionalLight(0xffffff,0.3);dl.position.set(1.2,1.4,2);scene.add(dl);
+
+  const group=new THREE.Group();scene.add(group);
+  const sphereGeo=new THREE.SphereGeometry(1,140,90);
+  sphereGeo.setAttribute('color',new THREE.Float32BufferAttribute(new Float32Array(sphereGeo.attributes.position.count*3),3));
+  const sphereMat=new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:0.5,depthWrite:false,side:THREE.FrontSide});
+  const sphere=new THREE.Mesh(sphereGeo,sphereMat);sphere.renderOrder=2;group.add(sphere);
+
+  const markers=new THREE.Group();group.add(markers);
+  let edgeObj=null;
+
+  // center dot
+  const center=new THREE.Mesh(new THREE.SphereGeometry(0.025,12,12),new THREE.MeshBasicMaterial({color:0x9fb0c2}));
+  group.add(center);
+
+  const col=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+  const V3=a=>new THREE.Vector3(a[0],a[1],a[2]);
+  function disposeObj(o){if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}}
+  function clearMarkers(){while(markers.children.length){const c=markers.children.pop();disposeObj(c);markers.remove(c);}}
+
+  function cyl(A,B,radius,color,opacity){
+    const a=V3(A),b=V3(B),dir=new THREE.Vector3().subVectors(b,a),len=dir.length();
+    if(len<1e-5)return null;
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,len,14),
+      new THREE.MeshBasicMaterial({color,transparent:opacity<1,opacity}));
+    m.position.copy(a).add(b).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());
+    return m;
+  }
+  function dline(A,B,color){
+    const g=new THREE.BufferGeometry().setFromPoints([V3(A),V3(B)]);
+    const l=new THREE.Line(g,new THREE.LineDashedMaterial({color,dashSize:0.045,gapSize:0.03,transparent:true,opacity:0.85}));
+    l.computeLineDistances();return l;
+  }
+  function ball(P,r,color){const m=new THREE.Mesh(new THREE.SphereGeometry(r,14,14),new THREE.MeshBasicMaterial({color}));m.position.copy(V3(P));return m;}
+  function label(text,hex){
+    const fs=22,pad=7,font='bold '+fs+'px ui-monospace,Menlo,Consolas,monospace';
+    const meas=document.createElement('canvas').getContext('2d');meas.font=font;
+    const w=Math.max(36,Math.ceil(meas.measureText(text).width)+pad*2),h=fs+pad*2;
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    const x=c.getContext('2d');x.fillStyle=hex;x.font=font;x.textAlign='center';x.textBaseline='middle';x.fillText(text,w/2,h/2);
+    const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+    const hW=0.1;s.scale.set(hW*(w/h),hW,1);s.renderOrder=5;return s;
+  }
+
+  // ---------- field ----------
+  let gLo=0,gHi=1;
+  function buildField(){
+    const pos=sphereGeo.attributes.position,colA=sphereGeo.attributes.color,N=pos.count;
+    const F=state.F,t=state.target,n=F.length,gv=new Float32Array(N);let mn=Infinity,mx=-Infinity;
+    for(let k=0;k<N;k++){const vx=pos.getX(k),vy=pos.getY(k),vz=pos.getZ(k);
+      const dt=vx*F[t][0]+vy*F[t][1]+vz*F[t][2];let mc=-Infinity;
+      for(let i=0;i<n;i++){if(i===t)continue;const d=vx*F[i][0]+vy*F[i][1]+vz*F[i][2];if(d>mc)mc=d;}
+      const g=dt-mc;gv[k]=g;if(g<mn)mn=g;if(g>mx)mx=g;}
+    gLo=mn;gHi=mx;const span=(mx-mn)||1;
+    for(let k=0;k<N;k++){const vx=pos.getX(k),vy=pos.getY(k),vz=pos.getZ(k);
+      let c=fieldColor((gv[k]-mn)/span),r=c[0],g=c[1],b=c[2];
+      if(state.tess){let t1=-Infinity,t2=-Infinity;
+        for(let i=0;i<n;i++){const d=vx*F[i][0]+vy*F[i][1]+vz*F[i][2];if(d>t1){t2=t1;t1=d;}else if(d>t2){t2=d;}}
+        const e=t1-t2;if(e<0.05){const f=(1-e/0.05)*0.78;r=r*(1-f)+0.02*f;g=g*(1-f)+0.03*f;b=b*(1-f)+0.05*f;}}
+      colA.setXYZ(k,r,g,b);}
+    colA.needsUpdate=true;
+    document.getElementById('gLo').textContent='g '+gLo.toFixed(2);
+    document.getElementById('gHi').textContent=gHi.toFixed(2);
+  }
+  function buildEdges(){
+    if(edgeObj){group.remove(edgeObj);disposeObj(edgeObj);edgeObj=null;}
+    if(!state.tess)return;
+    const F=state.F,n=F.length,pts=[],N=420,tol=0.012,RR=1.004;
+    for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+      const nrm=norm3([F[i][0]-F[j][0],F[i][1]-F[j][1],F[i][2]-F[j][2]]);
+      if(!isFinite(nrm[0]))continue;
+      const a=Math.abs(nrm[1])>0.9?[1,0,0]:[0,1,0],e1=norm3(cross3(nrm,a)),e2=cross3(nrm,e1);
+      let prev=null,prevOK=false;
+      for(let k=0;k<=N;k++){const th=k/N*2*Math.PI,ct=Math.cos(th),st=Math.sin(th);
+        const v=[e1[0]*ct+e2[0]*st,e1[1]*ct+e2[1]*st,e1[2]*ct+e2[2]*st];
+        const di=v[0]*F[i][0]+v[1]*F[i][1]+v[2]*F[i][2];let gmax=-Infinity;
+        for(let m=0;m<n;m++){const d=v[0]*F[m][0]+v[1]*F[m][1]+v[2]*F[m][2];if(d>gmax)gmax=d;}
+        const ok=(gmax-di)<tol;
+        if(ok&&prevOK&&prev)pts.push(prev[0]*RR,prev[1]*RR,prev[2]*RR,v[0]*RR,v[1]*RR,v[2]*RR);
+        prev=v;prevOK=ok;}
+    }
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+    edgeObj=new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:new THREE.Color(col('--ink')),transparent:true,opacity:0.9}));
+    edgeObj.renderOrder=3;group.add(edgeObj);
+  }
+
+  // ---------- markers + interior vectors ----------
+  let optResult={value:0,dir:[0,0,1]};
+  function buildMarkers(){
+    clearMarkers();
+    const F=state.F,t=state.target,w=norm3(state.w);
+    const cT=new THREE.Color(col('--target')),cC=new THREE.Color(col('--comp')),
+          cW=new THREE.Color(col('--steer')),cO=new THREE.Color(col('--opt'));
+    optResult=mOpt(F,t);
+    const lc=argmaxComp(F,t,w);              // currently binding competitor at this w
+    const pt=dot3(w,F[t]), pc=dot3(w,F[lc]); // signed projections (the two shadows)
+
+    // faint full rays for target & binding rival
+    let o;
+    if(o=cyl([0,0,0],F[t],0.008,cT,0.32))markers.add(o);
+    if(o=cyl([0,0,0],F[lc],0.008,cC,0.32))markers.add(o);
+    // bright projection shadows along those rays
+    if(o=cyl([0,0,0],scal(F[t],pt),0.022,cT,1))markers.add(o);
+    if(o=cyl([0,0,0],scal(F[lc],pc),0.022,cC,1))markers.add(o);
+    // the steering vector w (solid, full length)
+    if(o=cyl([0,0,0],w,0.016,cW,1))markers.add(o);
+    // perpendicular drop-lines from w-tip to each foot, + foot dots
+    const footT=scal(F[t],pt), footC=scal(F[lc],pc);
+    markers.add(dline(w,footT,cT)); markers.add(dline(w,footC,cC));
+    markers.add(ball(footT,0.03,cT)); markers.add(ball(footC,0.03,cC));
+    markers.add(ball(w,0.035,cW));   // w tip
+
+    // all features as small surface dots (so you can pick/retarget), labelled
+    for(let i=0;i<F.length;i++){
+      const isT=(i===t), isC=(i===lc);
+      markers.add(ball(F[i],isT?0.05:0.034, isT?cT:cC));
+      const lab=label('f'+i, isT?col('--target'):(isC?col('--comp'):col('--ink-faint')));
+      lab.position.copy(V3(scal(F[i],1.16)));markers.add(lab);
+    }
+    // optimum diamond on the surface, with label dodge if it sits on a feature
+    const od=optResult.dir;
+    const up=Math.abs(od[1])>0.9?[1,0,0]:[0,1,0],tan=norm3(cross3(od,up));
+    let nd=-Infinity;for(let i=0;i<F.length;i++)nd=Math.max(nd,dot3(od,F[i]));
+    const coin=nd>Math.cos(13*Math.PI/180);
+    const om=new THREE.Mesh(new THREE.OctahedronGeometry(0.06),new THREE.MeshBasicMaterial({color:cO}));
+    om.position.copy(V3(scal(od,coin?1.12:1.03)));markers.add(om);
+    const ol=label(coin?'opt = f'+t:'opt',col('--opt'));
+    ol.position.copy(coin?V3(scal(od,1.18)).add(V3(tan).multiplyScalar(0.34)):V3(scal(od,1.24)));
+    markers.add(ol);
+
+    updateProbe(pt,pc,lc);
+  }
+
+  function updateProbe(pt,pc,lc){
+    document.getElementById('pWt').textContent=(pt>=0?' ':'')+pt.toFixed(3);
+    document.getElementById('pWc').textContent=(pc>=0?' ':'')+pc.toFixed(3);
+    document.getElementById('cmpLab').innerHTML='⟨w, f<sub>'+lc+'</sub>⟩ &nbsp;loudest rival';
+    const g=pt-pc;document.getElementById('pGw').textContent=(g>=0?' ':'')+g.toFixed(3);
+    const d=document.getElementById('decide');
+    if(g>=0){d.className='decide win';d.textContent='decision: f'+state.target+' wins ✓';}
+    else{d.className='decide lose';d.textContent='decision: f'+lc+' wins — target lost';}
+  }
+
+  function updateReadouts(){
+    const F=state.F,t=state.target,mf=mMF(F,t),opt=optResult.value,gap=opt-mf,coh=maxCoherence(F,t),n=F.length;
+    document.getElementById('vMF').textContent=mf.toFixed(3);
+    document.getElementById('vOpt').textContent=opt.toFixed(3);
+    const gStat=document.getElementById('gapStat');document.getElementById('vGap').textContent=(gap>=0?'+':'')+gap.toFixed(3);
+    gStat.classList.toggle('gap-pos',gap>2e-3);gStat.classList.toggle('gap-zero',gap<=2e-3);
+    document.getElementById('gapNote').textContent=gap>2e-3?'steering helps':'symmetric → none';
+    document.getElementById('optSub').textContent=gap>2e-3?'off the matched filter':'= matched filter';
+    const sgn=coh.val<0?'−':'';document.getElementById('vCoh').textContent=sgn+Math.abs(coh.val).toFixed(3);
+    document.getElementById('cohNote').textContent=coh.idx>=0?('vs f'+coh.idx):'—';
+    const S=frameOp(F),fmt=x=>x.toFixed(2).padStart(5);
+    document.getElementById('frameOp').textContent=`= [[${fmt(S[0][0])},${fmt(S[0][1])},${fmt(S[0][2])}],[…],[…]]`;
+    const tight=Math.abs(S[0][0]-S[1][1])<2e-2&&Math.abs(S[1][1]-S[2][2])<2e-2&&Math.abs(S[0][1])<2e-2&&Math.abs(S[0][2])<2e-2&&Math.abs(S[1][2])<2e-2;
+    const tf=document.getElementById('tightFlag');
+    tf.textContent=tight?`✓ tight = (n/3)·I = ${(n/3).toFixed(2)}·I`:'— not tight';
+    tf.style.color=tight?col('--opt'):col('--warn');
+    const welch=n>3?Math.sqrt((n-3)/(3*(n-1))):0;
+    document.getElementById('welch').textContent=`μ ≥ √((n−3)/(3(n−1))) = ${welch.toFixed(3)}`;
+  }
+
+  function setConfig(key){
+    state.key=key;
+    let V,name,tgt;
+    if(key==='random'){ V=randomFrame(6); name='random · n=6'; tgt=0; }
+    else { V=CONFIGS[key].V; name=CONFIGS[key].name; tgt=CONFIGS[key].target; }
+    state.base=V.map(norm3); state.target=tgt;
+    state.perturb=0;
+    const ps=document.getElementById('perturb'); if(ps)ps.value=0;
+    document.getElementById('perturbOut').textContent='0°';
+    regenPerturbDirs(); applyFrame();
+    state.w=state.F[state.target].slice(); state.wOnTarget=true;
+    document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('on',b.dataset.p===key));
+    document.getElementById('cfgName').textContent=name;
+    buildField();buildEdges();buildMarkers();updateReadouts();
+  }
+
+  // ---------- interaction ----------
+  let dragging=false,moved=false,lx=0,ly=0;
+  canvas.addEventListener('pointerdown',e=>{dragging=true;moved=false;lx=e.clientX;ly=e.clientY;canvas.classList.add('grabbing');canvas.setPointerCapture(e.pointerId);});
+  canvas.addEventListener('pointermove',e=>{if(!dragging)return;const dx=e.clientX-lx,dy=e.clientY-ly;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;lx=e.clientX;ly=e.clientY;
+    const qy=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),dx*0.008);
+    const qx=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),dy*0.008);
+    group.quaternion.premultiply(qy).premultiply(qx);});
+  canvas.addEventListener('pointerup',e=>{dragging=false;canvas.classList.remove('grabbing');if(!moved)pick(e);});
+  canvas.addEventListener('pointercancel',()=>{dragging=false;canvas.classList.remove('grabbing');});
+  const ray=new THREE.Raycaster();
+  function pick(e){
+    const r=canvas.getBoundingClientRect();
+    ray.setFromCamera({x:((e.clientX-r.left)/r.width)*2-1,y:-((e.clientY-r.top)/r.height)*2+1},camera);
+    const hit=ray.intersectObject(sphere,false)[0];if(!hit)return;
+    const loc=sphere.worldToLocal(hit.point.clone()).normalize(),d=[loc.x,loc.y,loc.z];
+    let bi=-1,bd=-Infinity;for(let i=0;i<state.F.length;i++){const c=dot3(d,state.F[i]);if(c>bd){bd=c;bi=i;}}
+    if(bd>Math.cos(16*Math.PI/180)){if(bi!==state.target){state.target=bi;state.w=state.F[bi].slice();state.wOnTarget=true;buildField();buildMarkers();updateReadouts();}}
+    else{state.w=d;state.wOnTarget=false;buildMarkers();}
+  }
+  document.getElementById('presets').addEventListener('click',e=>{const b=e.target.closest('.preset');if(b)setConfig(b.dataset.p);});
+  document.getElementById('snapMF').addEventListener('click',()=>{state.w=state.F[state.target].slice();state.wOnTarget=true;buildMarkers();});
+  document.getElementById('snapOpt').addEventListener('click',()=>{state.w=optResult.dir.slice();state.wOnTarget=false;buildMarkers();});
+  document.getElementById('perturb').addEventListener('input',e=>{
+    state.perturb=(+e.target.value)/100*0.7;                       // 0 … ~40°
+    document.getElementById('perturbOut').textContent=Math.round(state.perturb*180/Math.PI)+'°';
+    refresh();
+  });
+  document.getElementById('reroll').addEventListener('click',()=>{ regenPerturbDirs(); refresh(); });
+  document.getElementById('spin').addEventListener('change',e=>state.spin=e.target.checked);
+  document.getElementById('tess').addEventListener('change',e=>{state.tess=e.target.checked;buildField();buildEdges();});
+  document.getElementById('shell').addEventListener('change',e=>{state.shell=e.target.checked;sphere.visible=state.shell;});
+
+  function resize(){const r=canvas.parentElement.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}
+  window.addEventListener('resize',resize);
+  function loop(){requestAnimationFrame(loop);if(state.spin&&!dragging)group.rotateOnWorldAxis(new THREE.Vector3(0,1,0),0.0028);renderer.render(scene,camera);}
+
+  setConfig('tetra');resize();loop();
+  group.rotation.x=0.32;group.rotation.y=-0.5;
+})();
+</script>

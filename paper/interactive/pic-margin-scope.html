@@ -1,0 +1,688 @@
+<!--
+  PIC Margin Scope
+  Interactive explainer for the M=2 worked examples in the optimal-margin /
+  Welch-regime discussion: matched-filter margin vs. best-steering (optimal) margin
+  for frame features on the unit circle in R^2.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PIC Margin Scope</title>
+<style>
+  :root{
+    --bg:#060a10;
+    --panel:#0c121b;
+    --panel-2:#0f1722;
+    --rule:#1c2836;
+    --rule-2:#26384b;
+    --ink:#dce5f0;
+    --ink-dim:#7d8ea2;
+    --ink-faint:#536273;
+    --target:#46e3d0;      /* phosphor cyan — the signal we want */
+    --target-glow:#46e3d088;
+    --comp:#e6a14e;        /* amber — competitors */
+    --comp-glow:#e6a14e66;
+    --steer:#c07dff;       /* violet — steering vector w */
+    --steer-glow:#c07dff77;
+    --opt:#8be36b;         /* soft green — the optimum */
+    --warn:#ff6b7a;
+    --mono: ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, #0b1a22 0%, transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding:24px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+
+  /* ---- header ---- */
+  header{margin-bottom:20px}
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;letter-spacing:.28em;text-transform:uppercase;
+    color:var(--target);
+    display:flex;align-items:center;gap:10px;
+  }
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--target);opacity:.7}
+  h1{
+    font-size:clamp(24px,4.4vw,38px);
+    font-weight:650;letter-spacing:-.015em;margin:.35em 0 .15em;
+  }
+  .lede{color:var(--ink-dim);max-width:62ch;font-size:15px}
+  .lede code{font-family:var(--mono);color:var(--ink);font-size:.92em}
+
+  /* ---- scopes ---- */
+  .scopes{
+    display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);
+    gap:14px;margin-top:22px;
+  }
+  .scope{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--rule);border-radius:12px;
+    padding:14px 14px 8px;position:relative;overflow:hidden;
+  }
+  .scope-label{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--ink-faint);
+    display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;
+  }
+  .scope-label b{color:var(--ink-dim);font-weight:600}
+  canvas{display:block;width:100%;height:auto;touch-action:none}
+
+  /* ---- readouts ---- */
+  .readouts{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;
+  }
+  .stat{
+    background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:11px 13px;
+  }
+  .stat .k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+  .stat .v{font-family:var(--mono);font-size:22px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums}
+  .stat.t .v{color:var(--target)}
+  .stat.o .v{color:var(--opt)}
+  .stat .sub{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);margin-top:2px}
+  .gap-pos .v{color:var(--opt)!important}
+  .gap-zero .v{color:var(--ink-dim)!important}
+
+  /* ---- controls ---- */
+  .controls{
+    margin-top:14px;background:var(--panel);border:1px solid var(--rule);
+    border-radius:12px;padding:14px 16px;
+  }
+  .row{display:flex;flex-wrap:wrap;gap:18px;align-items:center}
+  .row + .row{margin-top:14px;padding-top:14px;border-top:1px solid var(--rule)}
+  .grouplabel{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin-right:2px}
+  .presets{display:flex;gap:8px;flex-wrap:wrap}
+  button.preset, button.act{
+    font-family:var(--mono);font-size:12px;letter-spacing:.02em;
+    background:var(--panel-2);color:var(--ink-dim);
+    border:1px solid var(--rule-2);border-radius:8px;padding:7px 12px;cursor:pointer;
+    transition:border-color .15s,color .15s,background .15s;
+  }
+  button.preset:hover,button.act:hover{color:var(--ink);border-color:var(--ink-faint)}
+  button.preset.on{color:var(--bg);background:var(--target);border-color:var(--target);font-weight:600}
+  button.act.steer{color:var(--steer)}
+  button.act.opt{color:var(--opt)}
+  .slider{display:flex;align-items:center;gap:10px;flex:1;min-width:220px}
+  .slider label{font-family:var(--mono);font-size:11px;color:var(--ink-dim);white-space:nowrap}
+  .slider output{font-family:var(--mono);font-size:12px;color:var(--ink);min-width:54px;text-align:right;font-variant-numeric:tabular-nums}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;height:3px;border-radius:2px;flex:1;
+    background:var(--rule-2);outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+    background:var(--ink);border:2px solid var(--bg);cursor:pointer;box-shadow:0 0 0 1px var(--rule-2)
+  }
+  input[type=range]#wAngle::-webkit-slider-thumb{background:var(--steer);box-shadow:0 0 8px var(--steer-glow)}
+  input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--ink);border:2px solid var(--bg);cursor:pointer}
+  input[type=range]:disabled{opacity:.35}
+  .toggle{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink-dim);cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--target)}
+  .hint{font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+  .hint .tg{color:var(--target)}.hint .am{color:var(--comp)}.hint .vi{color:var(--steer)}
+
+  /* ---- explainer ---- */
+  .notes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+  .note{background:var(--panel);border:1px solid var(--rule);border-radius:11px;padding:14px 15px}
+  .note h3{margin:0 0 6px;font-size:13px;letter-spacing:.04em;font-family:var(--mono);text-transform:uppercase;color:var(--ink)}
+  .note h3 .tag{color:var(--ink-faint);font-size:10.5px}
+  .note p{margin:0;font-size:13px;color:var(--ink-dim)}
+  .note p + p{margin-top:8px}
+  .note code,.lede code,.note em.f{font-family:var(--mono);color:var(--ink);font-style:normal}
+  .note .num{font-family:var(--mono);color:var(--target)}
+  footer{margin-top:20px;font-family:var(--mono);font-size:11px;color:var(--ink-faint);line-height:1.7}
+  footer b{color:var(--ink-dim);font-weight:600}
+
+  @media (max-width:820px){
+    body{padding:16px}
+    .scopes{grid-template-columns:1fr}
+    .readouts{grid-template-columns:repeat(2,1fr)}
+    .notes{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">PIC · margin geometry · M = 2</div>
+    <h1>Matched filter vs. optimal steering</h1>
+    <p class="lede">
+      Frame features <code>f<sub>i</sub></code> live as phasors on the unit circle. A steering vector
+      <code>w</code> reads out the target by its projection, fighting its loudest competitor.
+      The <em>margin</em> is <code>⟨w,f<sub>t</sub>⟩ − max<sub>i≠t</sub>⟨w,f<sub>i</sub>⟩</code>.
+      Matched filter takes <code>w = f<sub>t</sub></code>; the optimum sweeps every <code>w</code>.
+      In symmetric tight frames they coincide — drag a phasor to make them part.
+    </p>
+  </header>
+
+  <div class="scopes">
+    <div class="scope">
+      <div class="scope-label"><span>constellation · phasors</span><b id="cfgName">simplex · n=3</b></div>
+      <canvas id="ring" width="460" height="460" aria-label="Unit circle with frame phasors"></canvas>
+    </div>
+    <div class="scope">
+      <div class="scope-label"><span>margin trace · g(w) vs. steer angle</span><b id="traceTag">sweeping 0–360°</b></div>
+      <canvas id="trace" width="600" height="460" aria-label="Margin g as a function of steering angle"></canvas>
+    </div>
+  </div>
+
+  <div class="readouts">
+    <div class="stat t"><div class="k">m_MF · matched</div><div class="v" id="vMF">1.500</div><div class="sub">w = f_t</div></div>
+    <div class="stat o"><div class="k">m_opt · best steer</div><div class="v" id="vOpt">1.500</div><div class="sub" id="optAt">at 90.0°</div></div>
+    <div class="stat" id="gapStat"><div class="k">steering gain</div><div class="v" id="vGap">0.000</div><div class="sub" id="gapNote">symmetric → none</div></div>
+    <div class="stat"><div class="k">max coherence ⟨f_t,f_i⟩</div><div class="v" id="vCoh">−0.500</div><div class="sub" id="cohNote">loudest competitor</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <span class="grouplabel">preset</span>
+      <div class="presets" id="presets">
+        <button class="preset on" data-p="simplex">Simplex · n=3</button>
+        <button class="preset" data-p="pentagon">Pentagon · n=5</button>
+        <button class="preset" data-p="skewed">Skewed · steering wins</button>
+        <button class="preset" data-p="dense">Crowded · n=11</button>
+        <button class="preset" data-p="random">Random · n=6</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="slider">
+        <label>regular n</label>
+        <input type="range" id="nGon" min="3" max="14" step="1" value="3">
+        <output id="nOut">3</output>
+      </div>
+      <div class="slider">
+        <label class="vi" style="color:var(--steer)">steer w</label>
+        <input type="range" id="wAngle" min="0" max="359" step="1" value="90">
+        <output id="wOut">90°</output>
+      </div>
+      <button class="act steer" id="snapMF">w → f_t</button>
+      <button class="act opt" id="snapOpt">w → optimal</button>
+    </div>
+
+    <div class="row">
+      <div class="slider">
+        <label>perturb</label>
+        <input type="range" id="perturb" min="0" max="100" step="1" value="0">
+        <output id="perturbOut">0°</output>
+      </div>
+      <button class="act" id="reroll">reroll</button>
+      <span class="hint">nudge features off symmetry — watch the optimum leave the matched filter</span>
+    </div>
+
+    <div class="row">
+      <label class="toggle"><input type="checkbox" id="lock" checked> lock to regular n-gon</label>
+      <span class="hint">
+        click a phasor to retarget &nbsp;·&nbsp; drag a <span class="tg">tip</span> to move it (unlock first) &nbsp;·&nbsp;
+        drag the <span class="vi">violet handle</span> to steer
+      </span>
+      <button class="act" id="reset" style="margin-left:auto">reset</button>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>Simplex <span class="tag">M=2, n=3</span></h3>
+      <p>Three phasors at 120°. Every inner product is <span class="num">−1/2</span>, so
+        <em class="f">m_MF = 1 − (−½) = </em><span class="num">1.5</span>. Steering can't beat the matched filter
+        — perfect symmetry. The margin exceeds 1 precisely because the coherence is <em>negative</em>: competitors point away.</p>
+      <p>This is the <em class="f">1 + 1/M</em> case the writeup flags.</p>
+    </div>
+    <div class="note">
+      <h3>Pentagon <span class="tag">M=2, n=5</span></h3>
+      <p>Nearest neighbours sit at 72°, so max signed coherence is <em class="f">cos 72° ≈ </em><span class="num">0.309</span>
+        and <em class="f">m_MF ≈ </em><span class="num">0.691</span>. Again symmetric, so the optimum lands on the same value —
+        the trace peaks exactly at <em class="f">w = f_t</em>.</p>
+      <p>The far pairs (144°) give cos = −0.809: large <em>magnitude</em> coherence, but it never touches the margin, which only feels the loudest <em>positive</em> competitor.</p>
+    </div>
+    <div class="note">
+      <h3>When steering wins <span class="tag">asymmetry</span></h3>
+      <p>Break the symmetry and the trace's peak slides off <em class="f">f_t</em>: tilt <em class="f">w</em> away from the single
+        worst competitor, lose a little on the target, win more on the margin. That's the
+        <span style="color:var(--opt)">green gain</span> — the gap <em class="f">m_opt − m_MF &gt; 0</em>.</p>
+      <p>In a tight frame everyone has identical neighbours, so there's nothing to tilt toward. That's the writeup's
+        core claim made visible.</p>
+    </div>
+  </div>
+
+  <footer>
+    <b>Welch floor (M=2):</b> <span id="welch">μ ≥ √((n−2)/(2(n−1)))</span> — a bound on coherence <i>magnitude</i>;
+    margins read <i>signed</i> coherence, so negatives help. &nbsp;
+    <b>Frame operator</b> S = Σ f_if_iᵀ = <span id="frameOp">[[1.50, 0.00],[0.00, 1.50]]</span>
+    <span id="tightFlag"></span>. &nbsp;
+    <b>Note:</b> in M=2 margins shrink toward 0 as n grows; the dimension-dependent floor ~1−1/√M only opens up in higher M.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const TAU = Math.PI*2, DEG = 180/Math.PI;
+
+  // ---------- state ----------
+  let state = {
+    angles: [],        // phasor angles (radians) = base + perturbation
+    base: [],          // unperturbed angles
+    pdir: [],          // signed per-feature perturbation factors
+    perturb: 0,        // perturbation magnitude (radians)
+    target: 0,         // target index
+    w: Math.PI/2,      // steering angle
+    wOnTarget: true,   // is w glued to the matched filter?
+    lock: true,
+    n: 3,
+    preset: "simplex"
+  };
+
+  function regular(n, start){            // n unit angles, f0 at `start`, CCW
+    start = (start===undefined)? Math.PI/2 : start;
+    const a=[]; for(let i=0;i<n;i++) a.push(start + i*TAU/n);
+    return a.map(norm);
+  }
+  function norm(t){ t%=TAU; return t<0? t+TAU : t; }
+
+  // an irregular frame: random angles, lightly repelled so nothing degenerately clumps
+  function randomAngles(n){
+    let a=[]; for(let i=0;i<n;i++) a.push(Math.random()*TAU);
+    for(let it=0;it<50;it++) for(let i=0;i<n;i++){ let f=0;
+      for(let j=0;j<n;j++){ if(i===j) continue;
+        let d=Math.atan2(Math.sin(a[i]-a[j]), Math.cos(a[i]-a[j])); f += d/(d*d+0.05); }
+      a[i]+=0.015*f; }
+    return a.map(norm);
+  }
+  function regenDirs(){ state.pdir = state.base.map(()=> Math.random()*2-1); }   // signed factor per feature
+  function applyPerturb(){
+    state.angles = state.base.map((b,i)=> norm(b + state.perturb*(state.pdir[i]||0)));
+    if(state.wOnTarget) state.w = state.angles[state.target];
+  }
+
+  // ---------- math ----------
+  const ip = (a,b)=>Math.cos(a-b);                 // ⟨f_a,f_b⟩ for unit angle vectors
+
+  function loudestCompetitor(angles,t,phi){        // argmax_i≠t ⟨w(phi),f_i⟩
+    let best=-Infinity, idx=-1;
+    for(let i=0;i<angles.length;i++){ if(i===t) continue;
+      const v=Math.cos(phi-angles[i]); if(v>best){best=v;idx=i;} }
+    return {idx, val:best};
+  }
+  function g(angles,t,phi){
+    return Math.cos(phi-angles[t]) - loudestCompetitor(angles,t,phi).val;
+  }
+  function maxCoherence(angles,t){                 // max signed ⟨f_t,f_i⟩, i≠t
+    let best=-Infinity, idx=-1;
+    for(let i=0;i<angles.length;i++){ if(i===t) continue;
+      const v=ip(angles[t],angles[i]); if(v>best){best=v;idx=i;} }
+    return {idx,val:best};
+  }
+  function mMF(angles,t){ return 1 - maxCoherence(angles,t).val; }
+  function mOpt(angles,t){
+    const N=2000; let best=-Infinity,bp=0;
+    for(let k=0;k<N;k++){ const phi=k*TAU/N, v=g(angles,t,phi); if(v>best){best=v;bp=phi;} }
+    // refine
+    for(let s=TAU/N, c=bp; s>1e-5; s/=4){
+      for(let d=-4;d<=4;d++){ const phi=c+d*s, v=g(angles,t,phi); if(v>best){best=v;bp=phi;} }
+    }
+    return {value:best, phi:norm(bp)};
+  }
+  function frameOperator(angles){
+    let a=0,b=0,c=0;
+    for(const t of angles){ const ct=Math.cos(t),st=Math.sin(t);
+      a+=ct*ct; b+=ct*st; c+=st*st; }
+    return [[a,b],[b,c]];
+  }
+
+  // ---------- canvases ----------
+  const ringC=document.getElementById("ring"), rx=ringC.getContext("2d");
+  const traceC=document.getElementById("trace"), tx=traceC.getContext("2d");
+  function fitDPR(cv,ctx){
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    const w=cv.clientWidth, h=cv.clientHeight;
+    cv.width=w*dpr; cv.height=h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {w,h};
+  }
+  const css=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+
+  function drawRing(){
+    const {w,h}=fitDPR(ringC,rx);
+    rx.clearRect(0,0,w,h);
+    const cx=w/2, cy=h/2, R=Math.min(w,h)*0.40;
+    const C={ink:css('--ink'),dim:css('--ink-dim'),faint:css('--ink-faint'),
+             rule:css('--rule'),rule2:css('--rule-2'),
+             target:css('--target'),comp:css('--comp'),steer:css('--steer'),opt:css('--opt')};
+
+    // grid: concentric + crosshair
+    rx.strokeStyle=C.rule; rx.lineWidth=1;
+    rx.beginPath(); rx.moveTo(cx-R*1.18,cy); rx.lineTo(cx+R*1.18,cy);
+    rx.moveTo(cx,cy-R*1.18); rx.lineTo(cx,cy+R*1.18); rx.stroke();
+    rx.strokeStyle=C.rule2;
+    rx.beginPath(); rx.arc(cx,cy,R,0,TAU); rx.stroke();
+    rx.setLineDash([2,5]); rx.strokeStyle=C.rule;
+    rx.beginPath(); rx.arc(cx,cy,R*0.5,0,TAU); rx.stroke(); rx.setLineDash([]);
+
+    const P=(ang,r)=>[cx+Math.cos(ang)*R*r, cy-Math.sin(ang)*R*r];
+    const {angles,target,w:wAng}=state;
+    const loud=loudestCompetitor(angles,target,wAng);
+    const opt=mOpt(angles,target);
+
+    // optimal steer direction (faint dashed)
+    {const [ex,ey]=P(opt.phi,1.12);
+     rx.strokeStyle=C.opt; rx.globalAlpha=.5; rx.setLineDash([3,4]); rx.lineWidth=1.5;
+     rx.beginPath(); rx.moveTo(cx,cy); rx.lineTo(ex,ey); rx.stroke();
+     rx.setLineDash([]); rx.globalAlpha=1;}
+
+    // phasors
+    for(let i=0;i<angles.length;i++){
+      const isT=(i===target), isL=(i===loud.idx);
+      const [ex,ey]=P(angles[i],1);
+      rx.strokeStyle = isT?C.target : (isL?C.comp:C.dim);
+      rx.lineWidth = isT?2.5 : (isL?2:1.4);
+      if(isT){rx.shadowColor=css('--target-glow');rx.shadowBlur=12;}
+      else if(isL){rx.shadowColor=css('--comp-glow');rx.shadowBlur=8;}
+      rx.beginPath(); rx.moveTo(cx,cy); rx.lineTo(ex,ey); rx.stroke();
+      rx.shadowBlur=0;
+      // arrowhead
+      const ah=8, a=angles[i];
+      rx.fillStyle=rx.strokeStyle;
+      rx.beginPath();
+      rx.moveTo(ex,ey);
+      rx.lineTo(ex-Math.cos(a-0.36)*ah, ey+Math.sin(a-0.36)*ah);
+      rx.lineTo(ex-Math.cos(a+0.36)*ah, ey+Math.sin(a+0.36)*ah);
+      rx.closePath(); rx.fill();
+      // tip handle when unlocked
+      if(!state.lock){ rx.fillStyle=css('--panel-2'); rx.strokeStyle=rx.fillStyle;
+        const [hx,hy]=P(angles[i],1); rx.beginPath(); rx.arc(hx,hy,5,0,TAU);
+        rx.fillStyle=isT?C.target:(isL?C.comp:C.dim); rx.fill(); }
+      // ring on loudest competitor
+      if(isL){ rx.strokeStyle=C.comp; rx.lineWidth=1.5; rx.setLineDash([2,3]);
+        rx.beginPath(); rx.arc(ex,ey,11,0,TAU); rx.stroke(); rx.setLineDash([]); }
+      // label
+      const [lx,ly]=P(angles[i],1.26);
+      rx.fillStyle=isT?C.target:(isL?C.comp:C.faint);
+      rx.font='600 12px '+css('--mono'); rx.textAlign='center'; rx.textBaseline='middle';
+      rx.fillText((isT?'f'+i+' ★':'f'+i), lx, ly);
+    }
+
+    // steering vector w (violet)
+    {const [ex,ey]=P(wAng,1);
+     rx.strokeStyle=C.steer; rx.lineWidth=2.5; rx.shadowColor=css('--steer-glow'); rx.shadowBlur=12;
+     rx.beginPath(); rx.moveTo(cx,cy); rx.lineTo(ex,ey); rx.stroke(); rx.shadowBlur=0;
+     // grab handle just outside
+     const [hx,hy]=P(wAng,1.12);
+     rx.strokeStyle=C.steer; rx.lineWidth=1.5;
+     rx.beginPath(); rx.moveTo(ex,ey); rx.lineTo(hx,hy); rx.stroke();
+     rx.fillStyle=C.steer; rx.beginPath(); rx.arc(hx,hy,6,0,TAU); rx.fill();
+     rx.fillStyle=css('--bg'); rx.beginPath(); rx.arc(hx,hy,2.5,0,TAU); rx.fill();
+     const [wlx,wly]=P(wAng,1.30);
+     rx.fillStyle=C.steer; rx.font='600 12px '+css('--mono'); rx.textAlign='center';
+     rx.fillText('w', wlx, wly);
+    }
+    return opt;
+  }
+
+  function drawTrace(opt){
+    const {w:W,h:H}=fitDPR(traceC,tx);
+    tx.clearRect(0,0,W,H);
+    const L=44,Rm=14,T=16,B=30, pw=W-L-Rm, ph=H-T-B;
+    const {angles,target,w:wAng}=state;
+    const C={ink:css('--ink'),dim:css('--ink-dim'),faint:css('--ink-faint'),
+             rule:css('--rule'),rule2:css('--rule-2'),target:css('--target'),
+             comp:css('--comp'),steer:css('--steer'),opt:css('--opt')};
+
+    // sample g over the dial
+    const N=720, xs=[],ys=[]; let gmin=Infinity,gmax=-Infinity;
+    for(let k=0;k<=N;k++){ const phi=k*TAU/N, v=g(angles,target,phi);
+      xs.push(phi); ys.push(v); if(v<gmin)gmin=v; if(v>gmax)gmax=v; }
+    const pad=(gmax-gmin)*0.12+1e-3;
+    let ymin=Math.min(0,gmin)-pad, ymax=gmax+pad;
+    const X=phi=>L+(phi/TAU)*pw;
+    const Y=v=>T+(ymax-v)/(ymax-ymin)*ph;
+
+    // grid
+    tx.strokeStyle=C.rule; tx.lineWidth=1; tx.fillStyle=C.faint;
+    tx.font='10px '+css('--mono'); tx.textAlign='center'; tx.textBaseline='top';
+    for(let d=0;d<=360;d+=60){ const x=X(d/DEG);
+      tx.beginPath(); tx.moveTo(x,T); tx.lineTo(x,T+ph); tx.stroke();
+      tx.fillText(d+'°', x, T+ph+6); }
+    // y ticks (0, mMF, mOpt handled below) + horizontal gridlines at nice values
+    tx.textAlign='right'; tx.textBaseline='middle';
+    const yticks=niceTicks(ymin,ymax,4);
+    for(const v of yticks){ const y=Y(v);
+      tx.strokeStyle=(Math.abs(v)<1e-9)?C.rule2:C.rule;
+      tx.beginPath(); tx.moveTo(L,y); tx.lineTo(L+pw,y); tx.stroke();
+      tx.fillStyle=C.faint; tx.fillText(v.toFixed(1), L-6, y); }
+
+    // zero line emphasis
+    tx.strokeStyle=C.rule2; tx.lineWidth=1;
+    tx.beginPath(); const z=Y(0); tx.moveTo(L,z); tx.lineTo(L+pw,z); tx.stroke();
+
+    // area fill under curve
+    tx.beginPath(); tx.moveTo(X(xs[0]),Y(Math.max(0,ys[0])));
+    let grad=tx.createLinearGradient(0,T,0,T+ph);
+    grad.addColorStop(0,'rgba(70,227,208,.16)'); grad.addColorStop(1,'rgba(70,227,208,0)');
+    tx.moveTo(X(xs[0]),Y(ys[0]));
+    for(let k=1;k<xs.length;k++) tx.lineTo(X(xs[k]),Y(ys[k]));
+    tx.lineTo(X(xs[xs.length-1]),Y(0)); tx.lineTo(X(xs[0]),Y(0)); tx.closePath();
+    tx.fillStyle=grad; tx.fill();
+
+    // the trace
+    tx.strokeStyle=C.target; tx.lineWidth=2; tx.shadowColor=css('--target-glow'); tx.shadowBlur=8;
+    tx.beginPath(); tx.moveTo(X(xs[0]),Y(ys[0]));
+    for(let k=1;k<xs.length;k++) tx.lineTo(X(xs[k]),Y(ys[k]));
+    tx.stroke(); tx.shadowBlur=0;
+
+    const mf = mMF(angles,target);
+    const mfPhi = angles[target];
+
+    // mMF horizontal reference
+    tx.setLineDash([4,4]); tx.strokeStyle=C.steer; tx.lineWidth=1; tx.globalAlpha=.8;
+    tx.beginPath(); tx.moveTo(L,Y(mf)); tx.lineTo(L+pw,Y(mf)); tx.stroke();
+    tx.setLineDash([]); tx.globalAlpha=1;
+
+    // matched-filter marker (violet) at phi = target angle
+    {const x=X(norm(mfPhi)), y=Y(mf);
+     tx.fillStyle=C.steer; tx.beginPath(); tx.arc(x,y,4.5,0,TAU); tx.fill();
+     tx.fillStyle=C.steer; tx.font='10px '+css('--mono'); tx.textAlign='left'; tx.textBaseline='bottom';
+     tx.fillText('w=f_t', x+7, y-3);}
+
+    // optimal marker (green)
+    {const x=X(opt.phi), y=Y(opt.value);
+     tx.strokeStyle=C.opt; tx.lineWidth=1; tx.setLineDash([2,3]);
+     tx.beginPath(); tx.moveTo(x,Y(0)); tx.lineTo(x,y); tx.stroke(); tx.setLineDash([]);
+     tx.fillStyle=C.opt; tx.beginPath(); tx.arc(x,y,5,0,TAU); tx.fill();
+     tx.shadowColor=css('--opt'); tx.shadowBlur=10; tx.beginPath(); tx.arc(x,y,2.5,0,TAU); tx.fill(); tx.shadowBlur=0;
+     tx.font='600 10px '+css('--mono'); tx.textAlign='center'; tx.textBaseline='bottom';
+     tx.fillText('m_opt', x, y-8);}
+
+    // current w cursor
+    {const x=X(norm(wAng)), gv=g(angles,target,wAng), y=Y(gv);
+     tx.strokeStyle=C.dim; tx.lineWidth=1; tx.globalAlpha=.7;
+     tx.beginPath(); tx.moveTo(x,T); tx.lineTo(x,T+ph); tx.stroke(); tx.globalAlpha=1;
+     tx.fillStyle=css('--bg'); tx.strokeStyle=C.ink; tx.lineWidth=1.5;
+     tx.beginPath(); tx.arc(x,y,4,0,TAU); tx.fill(); tx.stroke();}
+
+    // axis titles
+    tx.fillStyle=C.faint; tx.font='10px '+css('--mono');
+    tx.textAlign='center'; tx.textBaseline='bottom';
+    tx.save(); tx.translate(13,T+ph/2); tx.rotate(-Math.PI/2);
+    tx.fillText('g(w) = margin',0,0); tx.restore();
+  }
+
+  function niceTicks(lo,hi,count){
+    const span=hi-lo, raw=span/count, mag=Math.pow(10,Math.floor(Math.log10(raw)));
+    const norm=raw/mag; let step= norm<1.5?1:norm<3?2:norm<7?5:10; step*=mag;
+    const out=[]; let v=Math.ceil(lo/step)*step;
+    for(;v<=hi+1e-9;v+=step) out.push(Math.round(v/step)*step);
+    return out;
+  }
+
+  // ---------- readouts ----------
+  function updateReadouts(opt){
+    const {angles,target}=state;
+    const mf=mMF(angles,target), coh=maxCoherence(angles,target);
+    const gap=opt.value-mf;
+    document.getElementById('vMF').textContent=mf.toFixed(3);
+    document.getElementById('vOpt').textContent=opt.value.toFixed(3);
+    document.getElementById('optAt').textContent='at '+(opt.phi*DEG).toFixed(1)+'°';
+    const gEl=document.getElementById('vGap'), gStat=document.getElementById('gapStat');
+    gEl.textContent=(gap>=0?'+':'')+gap.toFixed(3);
+    gStat.classList.toggle('gap-pos',gap>1e-3);
+    gStat.classList.toggle('gap-zero',gap<=1e-3);
+    document.getElementById('gapNote').textContent = gap>1e-3? 'steering helps' : 'symmetric → none';
+    const sign = coh.val<0? '−':'';
+    document.getElementById('vCoh').textContent= sign+Math.abs(coh.val).toFixed(3);
+    document.getElementById('cohNote').textContent= coh.idx>=0? ('vs f'+coh.idx) : '—';
+
+    // frame operator + tightness + welch
+    const S=frameOperator(angles), n=angles.length;
+    document.getElementById('frameOp').textContent=
+      `[[${S[0][0].toFixed(2)}, ${S[0][1].toFixed(2)}],[${S[1][0].toFixed(2)}, ${S[1][1].toFixed(2)}]]`;
+    const tight = Math.abs(S[0][0]-S[1][1])<1e-2 && Math.abs(S[0][1])<1e-2;
+    const tf=document.getElementById('tightFlag');
+    tf.textContent = tight? '  ✓ tight (= (n/2)·I)' : '  — not tight';
+    tf.style.color = tight? css('--opt') : css('--warn');
+    const welch=Math.sqrt(Math.max(0,(n-2)/(2*(n-1))));
+    document.getElementById('welch').textContent=
+      `μ ≥ √((n−2)/(2(n−1))) = ${welch.toFixed(3)}`;
+  }
+
+  // ---------- render ----------
+  let raf=null;
+  function render(){
+    if(raf) return;
+    raf=requestAnimationFrame(()=>{ raf=null;
+      const opt=drawRing(); drawTrace(opt); updateReadouts(opt);
+    });
+  }
+
+  // ---------- config / presets ----------
+  function setConfig(p){
+    state.preset=p;
+    document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+    if(p==='simplex'){ state.lock=true; state.n=3; state.base=regular(3); state.target=0; }
+    else if(p==='pentagon'){ state.lock=true; state.n=5; state.base=regular(5); state.target=0; }
+    else if(p==='dense'){ state.lock=true; state.n=11; state.base=regular(11); state.target=0; }
+    else if(p==='skewed'){ state.lock=false; state.base=[90,138,250,300].map(d=>norm(d/DEG)); state.target=0; state.n=4; }
+    else if(p==='random'){ state.lock=false; state.n=6; state.base=randomAngles(6); state.target=0; }
+    state.perturb=0; regenDirs(); state.wOnTarget=true; applyPerturb();
+    document.getElementById('lock').checked=state.lock;
+    document.getElementById('nGon').value=state.n;
+    document.getElementById('nGon').disabled=!state.lock;
+    document.getElementById('nOut').textContent=state.n;
+    document.getElementById('perturb').value=0;
+    document.getElementById('perturbOut').textContent='0°';
+    syncW();
+    cfgLabel();
+    render();
+  }
+  function cfgLabel(){
+    const names={simplex:'simplex',pentagon:'pentagon',dense:'crowded',skewed:'skewed',random:'random'};
+    document.getElementById('cfgName').textContent =
+      (state.preset && names[state.preset]? names[state.preset] : 'custom')+' · n='+state.angles.length;
+  }
+  function syncW(){
+    let d=Math.round(norm(state.w)*DEG)%360;
+    document.getElementById('wAngle').value=d;
+    document.getElementById('wOut').textContent=d+'°';
+  }
+
+  // ---------- controls ----------
+  document.getElementById('presets').addEventListener('click',e=>{
+    const b=e.target.closest('.preset'); if(b) setConfig(b.dataset.p);
+  });
+  document.getElementById('nGon').addEventListener('input',e=>{
+    state.n=+e.target.value; document.getElementById('nOut').textContent=state.n;
+    if(state.lock){ state.base=regular(state.n);
+      if(state.target>=state.n) state.target=0;
+      state.perturb=0; document.getElementById('perturb').value=0; document.getElementById('perturbOut').textContent='0°';
+      regenDirs(); state.wOnTarget=true; applyPerturb();
+      state.preset=null; document.querySelectorAll('.preset').forEach(b=>b.classList.remove('on'));
+      syncW(); cfgLabel(); render(); }
+  });
+  document.getElementById('wAngle').addEventListener('input',e=>{
+    state.w=norm((+e.target.value)/DEG); state.wOnTarget=false;
+    document.getElementById('wOut').textContent=e.target.value+'°'; render();
+  });
+  document.getElementById('perturb').addEventListener('input',e=>{
+    state.perturb=(+e.target.value)/100*0.6;                    // 0 … ~34°
+    document.getElementById('perturbOut').textContent=Math.round(state.perturb*DEG)+'°';
+    applyPerturb(); syncW(); render();
+  });
+  document.getElementById('reroll').addEventListener('click',()=>{
+    regenDirs(); applyPerturb(); syncW(); render();
+  });
+  document.getElementById('lock').addEventListener('change',e=>{
+    state.lock=e.target.checked; document.getElementById('nGon').disabled=!state.lock;
+    if(state.lock){ state.base=regular(state.base.length); state.target=Math.min(state.target,state.base.length-1);
+      state.perturb=0; document.getElementById('perturb').value=0; document.getElementById('perturbOut').textContent='0°';
+      regenDirs(); applyPerturb(); }
+    cfgLabel(); render();
+  });
+  document.getElementById('snapMF').addEventListener('click',()=>{
+    state.w=state.angles[state.target]; state.wOnTarget=true; syncW(); render();
+  });
+  document.getElementById('snapOpt').addEventListener('click',()=>{
+    state.w=mOpt(state.angles,state.target).phi; state.wOnTarget=false; syncW(); render();
+  });
+  document.getElementById('reset').addEventListener('click',()=>setConfig('simplex'));
+
+  // ---------- pointer interaction on the ring ----------
+  let drag=null;  // {type:'w'|'phasor', idx}
+  function ringPoint(ev){
+    const r=ringC.getBoundingClientRect();
+    const x=(ev.clientX-r.left), y=(ev.clientY-r.top);
+    const cx=r.width/2, cy=r.height/2, R=Math.min(r.width,r.height)*0.40;
+    return {ang:norm(Math.atan2(cy-y,x-cx)), rad:Math.hypot(x-cx,y-cy)/R};
+  }
+  ringC.addEventListener('pointerdown',ev=>{
+    const p=ringPoint(ev); ringC.setPointerCapture(ev.pointerId);
+    // steering handle near r≈1.12
+    if(angDist(p.ang,state.w)<0.22 && p.rad>0.85){ drag={type:'w',moved:false}; return; }
+    // nearest phasor tip
+    let bi=-1,bd=1e9;
+    for(let i=0;i<state.angles.length;i++){ const d=angDist(p.ang,state.angles[i]); if(d<bd){bd=d;bi=i;} }
+    if(bi>=0 && bd<0.30 && p.rad>0.6){ drag={type:'phasor',idx:bi,moved:false,start:p.ang}; }
+  });
+  ringC.addEventListener('pointermove',ev=>{
+    if(!drag) return; const p=ringPoint(ev); drag.moved=true;
+    if(drag.type==='w'){ state.w=p.ang; state.wOnTarget=false; syncW(); render(); }
+    else if(drag.type==='phasor'){
+      if(state.lock) return;            // locked: no move (click handled on up)
+      state.angles[drag.idx]=p.ang;
+      if(drag.idx===state.target && state.wOnTarget) state.w=p.ang;
+      state.base=state.angles.slice(); state.perturb=0;   // dragging rebases the frame
+      document.getElementById('perturb').value=0; document.getElementById('perturbOut').textContent='0°';
+      if(state.pdir.length!==state.base.length) regenDirs();
+      state.preset=null; document.querySelectorAll('.preset').forEach(b=>b.classList.remove('on'));
+      cfgLabel(); render();
+    }
+  });
+  ringC.addEventListener('pointerup',ev=>{
+    if(drag && drag.type==='phasor' && !drag.moved){    // click = retarget (back to matched filter)
+      state.target=drag.idx; state.w=state.angles[drag.idx]; state.wOnTarget=true; syncW(); render();
+    }
+    drag=null;
+  });
+  ringC.addEventListener('pointercancel',()=>{drag=null;});
+  function angDist(a,b){ let d=Math.abs(norm(a)-norm(b)); return Math.min(d,TAU-d); }
+
+  window.addEventListener('resize',render);
+
+  // ---------- boot ----------
+  setConfig('simplex');
+  // gentle intro sweep of w (respects reduced motion)
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+    const tgt=state.angles[0]; state.w=tgt-1.4; let t0=null;
+    function intro(ts){ if(!t0)t0=ts; const k=Math.min(1,(ts-t0)/700);
+      const e=1-Math.pow(1-k,3); state.w=norm((tgt-1.4)+e*1.4); syncW(); render();
+      if(k<1) requestAnimationFrame(intro); }
+    requestAnimationFrame(intro);
+  }
+})();
+</script>

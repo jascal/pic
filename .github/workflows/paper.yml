@@ -42,6 +42,7 @@ jobs:
         run: |
           mkdir -p site
           cp paper/pic_calculus.pdf site/pic_calculus.pdf
+          cp -r paper/interactive site/interactive
           cat > site/index.html <<'HTML'
           <!doctype html>
           <html lang="en">
@@ -64,6 +65,14 @@ jobs:
                &nbsp;<a href="https://github.com/jascal/pic">source repo</a> ·
                <a href="pic_calculus.pdf">download PDF</a> · Apache-2.0.</p>
             <p>This page always serves the latest <code>master</code> build of the paper.</p>
+            <h2>Interactive intuition</h2>
+            <ul>
+              <li><a href="interactive/pic-margin-scope.html">Margin scope</a> &mdash;
+                  matched filter vs. optimal steering: why a tight (Welch-floor) frame leaves
+                  nothing to tilt toward.</li>
+              <li><a href="interactive/pic-margin-scope-3d-interior.html">Margin scope &middot; 3D interior</a>
+                  &mdash; the vectors inside the sphere, packing and the Welch floor in 3D.</li>
+            </ul>
             <embed class="pdf" src="pic_calculus.pdf" type="application/pdf">
           </body>
           </html>
