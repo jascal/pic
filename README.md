@@ -48,9 +48,9 @@ make paper          # -> paper/pic_calculus.pdf   (needs latexmk + pdflatex + st
 make clean
 ```
 
-CI builds it on every push (`.github/workflows/paper.yml`) and publishes the PDF as a downloadable
-**build artifact** (`pic_calculus-pdf`) — so you can grab the current paper from the latest run's
-Artifacts without a local TeX install, and the workflow also verifies the LaTeX still compiles.
+**The current paper is always live at → https://jascal.github.io/pic/pic_calculus.pdf** (GitHub Pages,
+rebuilt from `master` on every push by `.github/workflows/paper.yml`). PR builds also attach a
+downloadable `pic_calculus-pdf` artifact and verify the LaTeX still compiles.
 
 ## License
 
