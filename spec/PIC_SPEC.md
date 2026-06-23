@@ -399,9 +399,16 @@ the Welch setup on the rule-activation side.
   needs `M ≥ n`; otherwise interference grows as the `M`-dim rule bank is overpacked.
 - **`recon_error_eq_interference`** *(proved, `Superposition.thy`).* For a unit feature, reconstruction
   error equals total squared interference — geometry **is** the loss.
+- **`encoder_superposition`** *(proved, `PIC_Core.thy`).* On the explicit encoder rule bank (§4.3), more
+  rules than the ambient dimension forces the write directions to be linearly **dependent**
+  (`DIM < card(a_K) ⟹ ¬ independent(a_K)`) — the *qualitative* generator-side packing, now a property
+  of the encoder and the companion to `routing_rank`.
 - *(empirical, open)* The step **"routing interference ⇒ margin degradation"** is **not** a kernel
-  theorem. Trained models pack features at ≈ the Welch floor with healthy margins; the
-  coherence→margin link is measured and mild (`pil` docs §5f/§5g), not proved.
+  theorem — the **one** thing left open on this side. The *count/rank/dependence* facts are all proved
+  (`routing_rank`, `encoder_superposition`); the quantitative interference floor `≥ n(n−d)/d` is
+  `Welch.thy`; only the implication from coherence to a *margin penalty* is unproved. Trained models pack
+  features at ≈ the Welch floor with healthy margins; the coherence→margin link is measured and mild
+  (`pil` docs §5f/§5g), not proved.
 
 ### 5.4 The decode certificate — head/tail (`tropical/HeadTail.thy`)
 
@@ -418,9 +425,10 @@ This is the algebra behind the empirical decode-circuit finding: a **per-positio
 1–3 late-MLP blocks) reproduces the decode exactly *when* it dominates the tail; harder tokens push mass
 into the tail residue.
 
-### 5.5 Decision-side robustness — margin certificate (`provable_opt/ProvableOpt_Common.thy`)
+### 5.5 Decision-side robustness — margin certificate (`PIC_Core` `PIC_Logic.thy`; orig. `provable_opt/ProvableOpt_Common.thy`)
 
-`margin(L,V,t) = L(t) − max_{v≠t} L(v)`.
+`margin(L,V,t) = L(t) − max_{v≠t} L(v)`. *(Now also kernel-checked self-contained in `PIC_Logic.thy` as
+the LP clause-weight-drift bound — the decision-side companion to demand-closure.)*
 
 - **`decode_margin_certified`** *(proved, threshold tight).* If a perturbation is `δ`-bounded per token
   (`|L'(v) − L(v)| ≤ δ`) and `margin(L,V,t) > 2δ`, then `t` is still the strict argmax under `L'`. The
@@ -564,11 +572,25 @@ PIC has one important parameter that the proofs **do not** pin down, plus two op
   form is open. The earlier "≈12 scale-invariant blocks" reading was a Qwen *raw*-PR artifact — the
   common-mode-centred count grows with `nb`.
   *(Evidence: `pil/experiments/tau_star_entropy.py`, `pil/results/tau_star_entropy.txt`.)*
-- **coherence ⇒ margin** *(open).* §5.3's generator-side interference bound is proved; its consequence
-  for the decode margin is empirical/mild, not kernel.
+- **coherence ⇒ margin** *(open — precisely one implication).* Everything *up to* the margin is now
+  proved: the generator-side **rank** (`routing_rank`), **dependence/superposition** (`encoder_superposition`,
+  §5.3), and the quantitative **interference floor** `≥ n(n−d)/d` (`Welch.thy`). The single open step is
+  `interference ⇒ a margin penalty` — measured and mild, not a kernel theorem.
 - **global irreducibility** *(open).* §5.7 proves local irreducibility of a *given* coalition; whether a
   composed token is irreducible under *every admissible frame* — the real "is this computation
-  necessary?" question — is unproved.
+  necessary?" question — is unproved (and may be genuinely hard, not just unfinished).
+- **`τ★` functional form** *(open — empirical, awaiting data).* The cross-model law is refuted
+  (capacity/depth-bound, above); the precise functional form `r_eff = f(nb, depth, H)` awaits the
+  large-N (14m→72B) sweep on bigger hardware. Not a kernel question.
+- **`lfp(layer program) = model decode`** *(open).* PIC-LP (`PIC_LP.md`) proves the pieces — the operator,
+  the least model, demand-closure, the recursion — but a single end-to-end theorem that the lfp of the
+  *full layer program* equals the model's decode is not yet stated.
+
+**What this round closed** (so the open set is honest): the generator-side **superposition** bound is now
+proved on the explicit encoder (`encoder_superposition`), the **margin certificate** is self-contained in
+`PIC_Logic`, and the **LP metatheory** (operator, least model, magic-sets, unbounded recursion) is
+kernel-checked (`PIC_Logic.thy`). `pic_core` now covers the full §5 theorem set except the quantitative
+Welch floor (left to `Welch.thy`).
 
 ---
 
