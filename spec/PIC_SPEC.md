@@ -572,10 +572,14 @@ PIC has one important parameter that the proofs **do not** pin down, plus two op
   form is open. The earlier "≈12 scale-invariant blocks" reading was a Qwen *raw*-PR artifact — the
   common-mode-centred count grows with `nb`.
   *(Evidence: `pil/experiments/tau_star_entropy.py`, `pil/results/tau_star_entropy.txt`.)*
-- **coherence ⇒ margin** *(open — precisely one implication).* Everything *up to* the margin is now
-  proved: the generator-side **rank** (`routing_rank`), **dependence/superposition** (`encoder_superposition`,
-  §5.3), and the quantitative **interference floor** `≥ n(n−d)/d` (`Welch.thy`). The single open step is
-  `interference ⇒ a margin penalty` — measured and mild, not a kernel theorem.
+- **coherence ⇒ margin** *(matched-filter form proved; optimal form open).* Now pinned precisely
+  (`PIC_Interference.thy`): under the **matched-filter** decoder (steer by the target feature) the margin
+  is `1 − (max cross-coherence)`, so coherence subtracts *directly* (`mfmargin_le`, `mfmargin_lt_one`).
+  But the **unconditional** claim is *false* — the achievable (best-steering) margin is `≥ 1 − ρ`, so the
+  decoder can recover (the measured "cope at the Welch floor"). The genuinely open part is a geometric
+  lower bound on the **optimal** margin in the Welch regime `n > M`. Everything else up to it is proved:
+  rank (`routing_rank`), superposition (`encoder_superposition`), the interference floor `≥ n(n−d)/d`
+  (`Welch.thy`).
 - **global irreducibility** *(open).* §5.7 proves local irreducibility of a *given* coalition; whether a
   composed token is irreducible under *every admissible frame* — the real "is this computation
   necessary?" question — is unproved (and may be genuinely hard, not just unfinished).
