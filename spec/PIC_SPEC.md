@@ -580,9 +580,24 @@ PIC has one important parameter that the proofs **do not** pin down, plus two op
   lower bound on the **optimal** margin in the Welch regime `n > M`. Everything else up to it is proved:
   rank (`routing_rank`), superposition (`encoder_superposition`), the interference floor `≥ n(n−d)/d`
   (`Welch.thy`).
-- **global irreducibility** *(open).* §5.7 proves local irreducibility of a *given* coalition; whether a
-  composed token is irreducible under *every admissible frame* — the real "is this computation
-  necessary?" question — is unproved (and may be genuinely hard, not just unfinished).
+- **global irreducibility** *(RESOLVED — the pure-behavioral notion is **vacuous**).* The question "is a
+  composed token irreducible under *every* admissible frame?" collapses: with free gates `g_j(x)` and a
+  free frame, the residual ranges over `span{a_j}`, so any realizable behavior can be re-geometrized to
+  make *any* nominated decision single-source (place one generator inside its decode cell — an open,
+  full-dimensional cone — the rest of the bank still reaches every other cell with free gates). So there
+  is **no frame-invariant behavioral certificate** that a decision must be composed; the forge tax is
+  **not** a behavioral invariant. (The `M=1` case shows the rank bound is real, but it does not localize
+  to a specific token; Welch counting forces *some* decisions composed when `|X|>M`, never a *named* one.)
+  *The well-posed version fixes the gates to the model's measured activations* — see below.
+- **the forge-tax certificate is activation-relative, not behavior-relative** *(the well-posed
+  reformulation — open, now tractable).* Fix `g_j(x)` to the model's *actual* per-input activations (which
+  `fieldrun --pil-dump` already emits as `d_j(x) = g_j(x)·a_j`). Then "is `t_{x₀}` single-source / low-
+  coalition realizable?" becomes a nontrivial linear-realizability question over the *fixed* activation
+  matrix, with genuine sign-rank / margin-complexity certificates and (finite instances) decidability via
+  real-closed-field / SMT. This is the regime fieldrun *already operates in* — so the negative result
+  **vindicates** the native-frame local-irreducibility approach (§5.7) as the correct notion and points
+  the forge-tax certificate at the fixed-activation problem. *(Resolution via an adversarial-collaborator
+  constructive argument, 2026-06.)*
 - **`τ★` functional form** *(open — empirical, awaiting data).* The cross-model law is refuted
   (capacity/depth-bound, above); the precise functional form `r_eff = f(nb, depth, H)` awaits the
   large-N (14m→72B) sweep on bigger hardware. Not a kernel question.
