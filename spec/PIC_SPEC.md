@@ -601,9 +601,16 @@ PIC has one important parameter that the proofs **do not** pin down, plus two op
   — fix the measured contributions `d_j(x)`, free the decoder frame `U`; faithfulness + single-source
   become an **LP** with Farkas infeasibility duals as the certificate (poly-time); a stronger bilinear
   variant additionally frees the write-directions; runs on real `fieldrun --source-dump` data.
-- **`τ★` functional form** *(open — empirical, awaiting data).* The cross-model law is refuted
-  (capacity/depth-bound, above); the precise functional form `r_eff = f(nb, depth, H)` awaits the
-  large-N (14m→72B) sweep on bigger hardware. Not a kernel question.
+- **`τ★` functional form** *(RESOLVED — descriptively, 14-model 14m→72B sweep; `pil/results/tau_star_entropy_72b.txt`).*
+  **`τ★ ≈ min(exp H, d)` is robustly refuted to 72B**: `r_eff` anti-correlates with `exp(H̄)` (Pearson
+  −0.54) and associates with **capacity** (hidden Spearman +0.63, nb/layers +0.58); `r_eff/e^{H̄}` climbs
+  0.07→1.74 across scale. But there is **no clean functional form — it is architecture-dependent**: Pythia
+  `r_eff ≈ 0.4–0.5·nb` (grows with depth, 8→30), Qwen `r_eff ≈ flat ~11–17` (block-fraction shrinks
+  0.27→0.10 to 72B). (The "≈12 scale-invariant blocks" reading was a *Qwen raw-PR* artifact — Qwen's raw PR
+  is flat 7.7–13.8 to 72B while Pythia's grows to 37.) A modest **within-model** positive entropy coupling
+  survives (Spearman ~0.2–0.47 in capable models) — a second-order grain, not the cross-model driver. So
+  `τ★` is capacity-associated, not entropy-bound, with **no universal law** across architectures. recon =
+  1.00 on all 14 (the seam is exact to 72B). Not a kernel question.
 - ~~**`lfp(layer program) = model decode`**~~ *(now **proved**, `PIC_Forward.thy`).* The forward pass is
   the least fixpoint of a layered Datalog program (atom `(ℓ,x)` = "residual at layer ℓ is `x`"; the
   embedding is the fact `(0,r₀)`; each layer is a clause `(ℓ+1, step ℓ x) ⟸ (ℓ, x)`). `lfp_is_trajectory`
