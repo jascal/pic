@@ -1,7 +1,13 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.1). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.2). This document defines PIC precisely enough to serve all
 three repos of the program at once:
+
+> **v0.2 (2026-09-24)** — kernel-scope pass; no new theorems. The turnstile `P ⊢ v` is now strict, which
+> equals the kernel `decides`. The `(1+2ρ/γ)^d` count and the `−∞` / `T>0` semiring laws are marked as
+> not kernel-checked. `⊕_T` ranges over tokens throughout (§3). The LP reading is split into
+> decode and layer strata (§6.5), with weighted demand closure tagged open. The sparse block-head is
+> certified via §5.5, not §5.4.
 
 | repo | role | uses PIC as |
 |------|------|-------------|
@@ -588,7 +594,9 @@ to be typed.
 **Scope of demand closure.** `demand_restrict_lfp` (§5.6; `PIC_Logic.thy`) is proved for any **monotone**,
 demand-closed set operator on atoms. That makes it the soundness of **magic-sets / demand** for the layer
 stratum, where values ride as atom arguments. The `sum`/`max` aggregates of the decode stratum are *not*
-monotone set operators, so a demand theorem for weighted aggregate evaluation is **open**. The margin
+monotone set operators, so a demand theorem for weighted aggregate evaluation is **open**. (The
+likely route is stratified: the decode stratum is non-recursive and runs on the layer stratum's fixed
+output, so it would suffice to show that each aggregate reads only demanded atoms. This is not attempted.) The margin
 certificate (§5.5) bounds how much a clause weight may drift before an answer flips. A concrete `pic`-LP
 would be a semiring-parameterized weighted Datalog with these two strata, with the frame as the
 (learnable) fact-weight oracle — the analysis (`fieldrun --datalog`), the semantics (i-orca `lfp`/demand-closure),

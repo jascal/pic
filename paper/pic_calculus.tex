@@ -33,7 +33,7 @@
 \large A semiring-weighted incidence algebra for the transformer decode,\\
 its frozen-model geometry, and its learnable frame}
 \author{}
-\date{Draft --- companion to \texttt{spec/PIC\_SPEC.md}}
+\date{Draft --- companion to \texttt{spec/PIC\_SPEC.md} v0.2}
 
 \begin{document}
 \maketitle
@@ -466,7 +466,9 @@ monotone, demand-closed consequence operator, is proved \proved{} (\texttt{PIC\_
 magic-sets/demand optimization for any stratum whose operator is a monotone set operator on atoms. That
 includes the layer program, where values ride as atom arguments. The \texttt{sum}/\texttt{max} aggregates of
 the decode stratum are not monotone set operators, so a demand theorem for the weighted aggregate
-evaluation itself is \open{}. The margin certificate (Theorem~\ref{thm:margin}) bounds how far a clause
+evaluation itself is \open{}. The likely route is stratified: the decode stratum is non-recursive
+and runs on the layer stratum's fixed output, so it would suffice to show that each aggregate reads only
+demanded atoms. This is not attempted. The margin certificate (Theorem~\ref{thm:margin}) bounds how far a clause
 weight may drift before an answer flips. The frame/decode separation acts as the type discipline:
 frame-side clauses (what overlaps what) and decode-side queries (margins, multiplicity).
 
