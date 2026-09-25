@@ -1,9 +1,10 @@
 # The forge-tax certificate: activation-relative irreducibility
 
 **Status:** formulation draft (v0.1), the well-posed successor to "global irreducibility" (`PIC_SPEC.md`
-§7). The pure-*behavioral* global notion is **vacuous** — with free gates and a free frame any decision
-re-geometrizes to single-source (the adversarial-collaborator negative result). The forge tax is therefore
-**not** a behavioral invariant. It *is* an **activation-relative** one: fix the model's measured
+§7). The pure-*behavioral* global notion is **argued to be vacuous** *(open — prose argument, not
+kernel-checked; admissibility as stated in `PIC_SPEC.md` §7)*. With free gates and a free frame, any
+decision appears to re-geometrize to single-source (the adversarial-collaborator argument). If that
+holds, the forge tax is **not** a behavioral invariant. It *is* an **activation-relative** one: fix the model's measured
 computation and ask whether re-*representing* can turn a composed decision into retrieval. This document
 states that question precisely, gives a **tractable (LP) certificate** with infeasibility duals, the
 stronger (bilinear) variant, and the empirical protocol on real `fieldrun` data.
@@ -65,7 +66,7 @@ So:
 
 Complexity: poly-time (one LP per candidate coalition; `M` for single-source, `Σ_{i≤k} C(M,i)` for
 `k`-coalitions — cap `k` small, it's the interesting regime). Decidable and *cheap*, unlike the
-free-computation version (which was either vacuous or, with directions free, NP-hard — §4).
+free-computation version (argued vacuous with gates free; NP-hard with directions free — §4).
 
 ## 4. Stronger variant (free directions; bilinear)
 
@@ -108,7 +109,7 @@ sign pattern of the margins `(⟨d_j(x₀), U_{t_{x₀}} − U_v⟩)_{v∈W}` be
 - **Bilinear version (free frame + directions, fixed gates):** certifies **representation-invariance** —
   no relocation of where sources write recovers retrieval either. Stronger, NP-hard.
 - **Both fix the model's firing/writes** — which is exactly why this is well-posed where the behavioral
-  version (which freed the gates) was vacuous. A certified-computed token is one whose compositionality
+  version (which freed the gates) is argued to be vacuous. A certified-computed token is one whose compositionality
   survives *re-representation* but is, of course, still produced *by* the model's own computation — the
   claim is "not retrieval under any faithful representation," not "uncomputable."
 - **What it does not claim:** global, model-independent hardness. It is a certificate *relative to the
@@ -117,11 +118,11 @@ sign pattern of the margins `(⟨d_j(x₀), U_{t_{x₀}} − U_v⟩)_{v∈W}` be
 
 ---
 
-## 7. What we found — the free-frame LP is **vacuous** (and why that's informative)
+## 7. What we found — no certificates on the first 40 positions (and what that does and does not show)
 
 Both pieces are built: `fieldrun --source-dump` (rope + neox; recon 1.00) and the LP harness
 (`pil/experiments/forge_tax_certificate.py`, `load_source_dump`). Running the §3 certificate on Qwen-0.5B
-(40 held-out positions) gives a clean **negative** result:
+(40 held-out positions) gives a **negative result on that sample** *(empirical)*:
 
 > **0/40 positions are 1-irreducible** — down to margin 0.09. Every position is reducible *via its dominant
 > block*: the late-MLP write has `‖d̃_dom‖ ≈ ‖r_x‖`, so "that block alone decodes `x₀`" is ≈ faithfulness
@@ -129,8 +130,20 @@ Both pieces are built: `fieldrun --source-dump` (rope + neox; recon 1.00) and th
 
 The harness is **correct**, not buggy: the faithfulness-only LP is feasible (the model's own frame
 witnesses it), and the small blocks *do* return infeasible (only ~27 of 49 blocks are feasible per
-position). It is the **free frame** that is too permissive — with a free per-token `U'`, a token can be
-re-pointed onto almost any sizeable block direction.
+position). On these positions the **free frame** proved too permissive: with a free per-token `U'`, the target
+could be re-pointed onto a sizeable block direction. Similar vector **norms** (`‖d̃_dom‖ ≈ ‖r_x‖`) are a
+heuristic for this, not an explanation. Norms do not fix directions, and it is the directions that
+determine the LP constraints.
+
+**The LP is not vacuous in general.** A three-context instance certifies. Take residuals
+`r₁ = e₁+e₂`, `r₂ = e₁`, `r₃ = e₂` with labels `t, w, w`, and let context 1 have the two sources `e₁` and
+`e₂`. A faithful affine decoder exists: score `t` as `2r₁+2r₂−3` and `w` as `0` (context 1 scores
+`t = 1 > 0`, contexts 2 and 3 score `t = −1 < 0`). Under *any* faithful decoder, neither singleton at
+context 1 can decode `t`, because each singleton equals another context's residual, and that context must
+decode `w`. So context 1 is **certified 1-irreducible**. The 0/40 result is therefore a property of
+those positions and this corpus. It is not an impossibility theorem for the representational certificate.
+Which explicit constraints make certificates appear (corpus size, repeated targets, competitor coverage,
+frame-distance constraints, source granularity) is the open question.
 
 This **re-confirms two things already established**, from a third angle:
 - **Grok's negative result** (§ above / `PIC_SPEC.md` §7): decode-composedness is **frame-relative**. Even
@@ -138,20 +151,22 @@ This **re-confirms two things already established**, from a third angle:
 - **The decode-circuit finding**: the decode is a **frame-reducible late-MLP readout** (median 1–3 blocks).
   The dominant-block reducibility is exactly that result re-derived through the LP.
 
-**Upshot (the real conclusion).** The forge tax is **not** certifiable as decode single-source
-irreducibility under a free frame — it does not live in the *readout's frame-representability*. It lives in
+**Upshot (what the sample suggests).** On these 40 positions the forge tax did **not** show up as
+decode single-source irreducibility under a free frame. The working hypothesis is that it lives mostly in
 **building the residual** — the causal stack that the late MLP reads out (`mass ≠ causation`, measured by
-`fieldrun --block-ablate`: early layers carry ~0% direct mass yet are ~99% necessary). So the meaningful
-"this was computed" certificate is **causal, not representational** — which the existing block-ablation
-already supplies. The representational angle is what's vacuous.
+`fieldrun --block-ablate`: early layers carry ~0% direct mass yet are ~99% necessary). So a
+"this was computed" certificate may be more readily **causal** than representational, and the existing
+block-ablation already supplies the causal one. Whether the representational certificate is empty at
+scale remains **open**, since the instance above shows it is not empty in principle.
 
 **If a representational certificate is still wanted**, it must constrain the realization's *shared*
 structure: fix the frame `U` (the model's) and free the **write directions `A`, shared across all
 positions** (`r_x = A g(x)`, an LP in `A`) — at **neuron** granularity, where sources are genuinely
 rank-1 (`a_k = W_out` column, `g_k(x)` the activation). Blocks are not rank-1, so the free-block-frame LP
 cannot express that coupling. The neuron-level version is a much finer/larger dump and an open follow-up;
-the §3 LP is a *sound relaxation* of it, and the relaxation being vacuous tells us the coupling — not the
-fixed contributions — is what would carry the certificate.
+the §3 LP is a *sound relaxation* of it. If the relaxation keeps failing to certify on larger, controlled
+samples, that would suggest the coupling, rather than the fixed contributions, is what carries the
+certificate.
 
 *Evidence: `pil/results/forge_tax_certificate.txt`. Harness + `--source-dump` are the reusable seam; the
 objective is the part to strengthen.*

@@ -1,6 +1,6 @@
 # PIC-LP: the logic-programming face of Projective Incidence Calculus
 
-**Status:** language spec (v0.1), companion to [`PIC_SPEC.md`](./PIC_SPEC.md) §6.5. PIC-LP is **not a new
+**Status:** language spec (v0.2), companion to [`PIC_SPEC.md`](./PIC_SPEC.md) §6.5. PIC-LP is **not a new
 language to be invented** — it is the formal semantics of a semiring-weighted Datalog that **already
 exists and runs**: `fieldrun export --logic` emits it, Soufflé executes it, and i-orca's `ProvableOpt`
 corpus proves its optimization-soundness. This doc gives that program a precise reading and pins down
@@ -28,7 +28,7 @@ The core relations and clauses, verbatim in spirit:
 
 logit(T, S)   :- candidate(T), S = sum W : { contrib(_, T, W) }.   // ⊗ over blocks  (log-semiring +)
 decide(T)     :- logit(T, S), S = max S2 : { logit(_, S2) }.       // ⊕ = max        (T → 0, argmax)
-retrieved(T)  :- induction_copy(T).        // the clean RECURSIVE rule: copy the token after the matched prefix
+retrieved(T)  :- induction_copy(T).        // the induction macro: copy the token after the matched prefix (NOT itself recursive)
 ```
 
 Everything below is the formal reading of *this*. The mapping to PIC (`PIC_SPEC.md`):
@@ -38,7 +38,7 @@ Everything below is the formal reading of *this*. The mapping to PIC (`PIC_SPEC.
 | fact `contrib(b, t, w)` | incidence `b ▷ t = ⟨d_b, U_t⟩` valued in `R_T` | the atoms' weights |
 | `logit(T,S) :- …S = sum W…` | the `⊗`-monomial `L(t) = ⊗_b (b ▷ t)` | **`⊗` aggregates a body** |
 | `decide(T) :- …S = max S2…` | the decode `⊤ = ⊕_T`-argmax over tokens | **`⊕_T` aggregates alternatives** |
-| `retrieved`, `induction_copy` | the recursive macro (induction head) | the genuinely recursive clause |
+| `retrieved`, `induction_copy` | the induction macro (induction head) | a non-recursive clause; recursion only via the autoregressive loop (§4) |
 
 So the database-style `sum`/`max` aggregates in the emitted Soufflé are **literally** PIC's `⊗` and `⊕_T`
 (§1.3 of `PIC_SPEC.md`): a body is a `⊗`-monomial, the query head is the `⊕_T` over alternatives.
@@ -61,13 +61,29 @@ operator** `T_P : 𝒫(B) → 𝒫(B)`,
 
 > `T_P(I) = I ∪ { head(c) : c ∈ P, body(c) ⊆ I }`,
 
-which is **monotone**, so by Knaster–Tarski it has a **least fixpoint** `lfp(T_P)` — the program's
-**least model** (its answer). The query is read off the answer: the decoded token is the unique `t` with
-`decide(t) ∈ lfp(T_P)`.
+which is **monotone** for plain Horn clauses, so by Knaster–Tarski it has a **least fixpoint**
+`lfp(T_P)`, the program's **least model**. This is the Boolean backbone that `PIC_Logic.thy` proves
+things about. **The emitted program is not plain Horn.** `logit` and `decide` use `sum`/`max` aggregates,
+which are not monotone set operators: adding a `contrib` fact can change a `sum`, and adding a `logit` can
+retract a `decide`. So its semantics is **stratified aggregation**: evaluate the aggregate-free strata to
+their lfp, then each aggregate stratum once on the completed lower strata. The Horn-clause results
+(least model, demand closure) apply to the aggregate-free strata. They do not transfer automatically to
+the aggregates. A stratified evaluator that exactly matches the emitted Soufflé program is **not yet
+specified** *(open)*. Under stratification `decide` is the **argmax relation**: it contains every `t`
+whose logit attains the maximum. It is a single token only under a **unique-maximum precondition**. On a
+tie it contains every maximizer. The strict coalition decision of `PIC_SPEC.md` §6.5 (`dec`) derives
+nothing on a tie, and the model's own pick applies a tie-breaking selection policy. So "the decoded token"
+is well-defined only under unique maximum or with a stated selection policy. `fieldrun` has one mode that
+emits the model's pick directly as a `decide(pred)` fact, and another that emits the aggregate rule
+above.
 
-**Semiring-weighted (provenance) evaluation.** Atoms carry weights in `R_T` (§2 of `PIC_SPEC.md`); a
-clause combines its body by `⊗` and merges alternative derivations of the same head by `⊕_T`. This is
-Green–Karvounarakis–Tannen provenance with the carrier `R_T`. PIC's one native move: the fact weights
+**Semiring-weighted (provenance) evaluation.** Atoms carry weights in `R_T` (§2 of `PIC_SPEC.md`). A
+clause combines its body by `⊗`, and alternative derivations of the same head merge by `⊕_T`. This is
+Green–Karvounarakis–Tannen provenance with the carrier `R_T`. In the emitted decode each `logit(t)` has a
+**single** derivation, so the merge is trivial there. The `max` in `decide` ranges over *different*
+answers, not over derivations of one answer. **Caveat:** `⊕_T` over alternative derivations is not
+ProbLog's possible-world semantics. Overlapping explanations share facts, and summing them double-counts.
+Algebraic ProbLog needs extra machinery (knowledge compilation) for this, and PIC-LP does not supply it. PIC's one native move: the fact weights
 are **not given but derived from geometry**, `b ▷ t = ⟨d_b, U_t⟩`. The two emitted aggregates are exactly
 the two semiring operations:
 - `logit(T,S) :- … S = sum W : {contrib(_,T,W)}` — the body is a `⊗`-product (`= +` in the log domain).
@@ -78,23 +94,29 @@ the two semiring operations:
 | `T` | `⊕_T` | PIC-LP is | query semantics |
 |-----|-------|-----------|-----------------|
 | `0` (tropical) | `max` | **min-cost / Viterbi** logic programming | the single best derivation (the argmax decode) |
-| `1` (log) | logsumexp | **probabilistic** logic programming (ProbLog-style) | the normalized answer distribution (softmax) |
+| `1` (log) | logsumexp | softmax-weighted evaluation (**not** full ProbLog, see the caveat above) | the normalized answer distribution (softmax) |
 | Boolean | `∨` | **classical Datalog** | derivable-or-not (pure rule gating) |
 
 The **decode temperature-invariance** lemma (`PIC_SPEC.md` §3.1) has a clean LP reading: the *winning
 derivation* `decide(t)` is the **same** for every `T` — only its *certainty* (the provenance weight)
 changes. So the tropical program and the probabilistic program compute the **same answer**, differing
-only in the confidence annotation.
+only in the confidence annotation. **This holds only because each answer has one derivation.** Once
+`⊕_T` merges alternative derivations *within* an answer, it fails. For example, answer `A` has two
+score-0 derivations and answer `B` has one score-0.5 derivation. At `T=1`, `A` gets `log 2 ≈ 0.69` and
+beats `B`. At `T→0`, `A` gets `0` and `B` wins. A multi-derivation (recursive) PIC-LP program therefore
+has a genuinely `T`-dependent answer.
 
 ## 4. Where the recursion comes from
 
 A single forward pass is **stratified** (acyclic): `contrib` → `logit` → `decide` are layered, so
 `lfp(T_P)` is reached by finite bottom-up iteration — Datalog with no real recursion. The genuine
 recursion has two sources, both already in the emitted program / the program's structure:
-1. **The induction macro** — `retrieved(T) :- induction_copy(T)` (copy the token after the matched
-   prefix). This is the one *clean recursive clause*: it derives the next token by reference to an earlier
-   match, the LP face of an induction head. Generation feeds `decide` back as a new fact → an
-   autoregressive recursion whose `lfp` is the generated sequence.
+1. **The autoregressive loop** — around the induction macro `retrieved(T) :- induction_copy(T)` (copy
+   the token after the matched prefix). The clause **is not itself recursive**: `retrieved` never occurs
+   in a body. It derives the next token by reference to an earlier match, the LP face of an induction
+   head. Recursion appears only when generation feeds `decide` back as a new fact at the next position.
+   That position-indexed program, whose `lfp` would be the generated sequence, is outside the
+   single-decision emission.
 2. **The layer recurrence** — the residual at layer `ℓ+1` is derived from layer `ℓ` (the encoder applied
    once per layer): a stratified program whose strata are the layers. Its `lfp` is the full residual
    stack; the decode reads the final stratum.
@@ -133,7 +155,7 @@ fires) + *decode-side* query.
 For one decision with candidates `{t₀, t₁}` and blocks `{b₁, b₂}`, the encoder grounds
 `contrib(b₁,t₀,w₁₀), contrib(b₂,t₀,w₂₀), contrib(b₁,t₁,w₁₁), contrib(b₂,t₁,w₁₁)`. Then
 `logit(t,·)` fires `⊗` (`w₁ₜ + w₂ₜ`), `decide` fires `⊕_T` (`max` at `T=0`) → `decide(t*)` for
-`t* = argmax`. If `induction_copy(t₁)` holds (an induction head matched), the recursive clause adds
+`t* = argmax`. If `induction_copy(t₁)` holds (an induction head matched), the macro clause adds
 `retrieved(t₁)` regardless of the numeric margin — the *macro* fires structurally. The answer
 `lfp(T_P) ⊇ {decide(t*), retrieved(t₁)}` is the program's least model; the same `decide(t*)` for every
 `T`, with the provenance weight (margin / softmax mass) the only `T`-dependent annotation.
@@ -173,7 +195,7 @@ Grammar surface make the recursive PIC-LP rules readable?
   `lfp_is_trajectory`: `answer(Player) = {(ℓ, Rℓ) | ℓ}` exactly, so `lfp(T_P)` of the full layer
   program equals the forward residual stack and the decode reads its final layer (`lfp_decode_logits`).
 - **empirical** (fieldrun): the emitted program reproduces the model decode (`export --logic`, run in
-  Soufflé); the induction rule is the one clean recursive clause measured.
+  Soufflé) at the measured positions; the induction rule is measured as a (non-recursive) macro clause.
 - **open**: the semantics of *unbounded* recursion depth (induction composition) as a recursive PIC-LP
   program with a genuine (not finite-stratified) fixpoint over the position axis — the DCG-surface
   direction (§7.5).
