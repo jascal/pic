@@ -1,7 +1,13 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.1). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.2). This document defines PIC precisely enough to serve all
 three repos of the program at once:
+
+> **v0.2 (2026-09-24)** — kernel-scope pass; no new theorems. The turnstile `P ⊢ v` is now strict, which
+> equals the kernel `decides`. The `(1+2ρ/γ)^d` count and the `−∞` / `T>0` semiring laws are marked as
+> not kernel-checked. `⊕_T` ranges over tokens throughout (§3). The LP reading is split into
+> decode and layer strata (§6.5), with weighted demand closure tagged open. The sparse block-head is
+> certified via §5.5, not §5.4.
 
 | repo | role | uses PIC as |
 |------|------|-------------|
@@ -106,15 +112,23 @@ PIC is parameterised by a **temperature** `T ≥ 0` selecting a commutative semi
 | sum identity `𝟘` | `−∞` | "no alternative" (`a ⊕_T −∞ = a`) |
 | product identity `𝟙` | `0` | "empty coalition" (`a ⊗ 0 = a`) |
 
-**Semiring axioms** (all hold for every `T ≥ 0`; the tropical case `T = 0` is the one machine-checked in
-`TropicalSemiring.thy`):
-1. `(R, ⊕_T, 𝟘)` is a commutative monoid — `⊕_T` associative, commutative, identity `−∞`. *(proved, T=0)*
-2. `(R, ⊗, 𝟙)` is a commutative monoid — `⊗ = +` associative, commutative, identity `0`. *(proved, T=0)*
+**Semiring axioms.** All four hold for every `T ≥ 0`. **What is kernel-checked is narrower.**
+`TropicalSemiring.thy` formalizes only `T = 0` over the finite carrier `real`, which has **no `−∞`**. So
+the `−∞` parts and every `T > 0` statement below hold by definition or by elementary algebra, but are
+*not* kernel-checked.
+1. `(R, ⊕_T, 𝟘)` is a commutative monoid — `⊕_T` associative, commutative, identity `−∞`.
+   *(proved at T=0 over `ℝ`: assoc/comm/idem of `max`. The identity `−∞` is not kernel-checked, since it
+   lies outside the formalized carrier.)*
+2. `(R, ⊗, 𝟙)` is a commutative monoid — `⊗ = +` associative, commutative, identity `0`. *(proved over `ℝ`)*
 3. **Distributivity** `a ⊗ (b ⊕_T c) = (a ⊗ b) ⊕_T (a ⊗ c)` — addition distributes over the `T`-sum.
-   *(proved, T=0: `tmul_tadd_distrib_left`; for general `T` it is the log-domain identity
-   `a + T\log(e^{b/T}+e^{c/T}) = T\log(e^{(a+b)/T}+e^{(a+c)/T})`.)* This is the load-bearing law: it
-   rewrites a sum-of-maxes (a ReLU stack) as a max-of-sums (a tropical polynomial).
+   *(proved, T=0 over `ℝ`: `tmul_tadd_distrib_left/right`. For `T > 0` it is the log-domain identity
+   `a + T\log(e^{b/T}+e^{c/T}) = T\log(e^{(a+b)/T}+e^{(a+c)/T})`, not kernel-checked.)* It rewrites a
+   sum-of-maxes (a ReLU stack) as a max-of-sums (a tropical polynomial).
 4. **Annihilation** `𝟘 ⊗ a = 𝟘` — `−∞ + a = −∞` (an absent alternative stays absent under combination).
+   *(By definition on `ℝ ∪ {−∞}`; not kernel-checked.)*
+
+For `T > 0`, `x ↦ e^{x/T}` is an isomorphism `R_T ≅ (ℝ_{≥0}, +, ×)`. Every `T > 0` member is therefore the
+same semiring up to isomorphism, and the only algebraically distinct member is `T = 0`.
 
 `R_T` is **commutative** and (at `T=0`) **idempotent** (`a ⊕_0 a = a`); idempotency is lost for `T>0`
 (`a ⊕_1 a = a + log 2`), which is exactly the difference between geometry (`T→0`) and probability (`T=1`).
@@ -130,7 +144,8 @@ The three named instances:
 The family is connected by **Maslov dequantization**: `T·log(e^{a/T} + e^{b/T}) → max(a,b)` as
 `T → 0⁺`. So the probabilistic calculus (the model in operation) and the geometric calculus (the
 proofs) are the **two ends of one deformation**, not two different objects. The tropical end is a
-genuine semiring: `TropicalSemiring.thy` proves `tadd a b = max a b`, `tmul a b = a + b`, and the
+genuine semiring on `ℝ` (see the kernel-scope note above): `TropicalSemiring.thy` defines
+`tadd a b = max a b` and `tmul a b = a + b`, and proves the
 distributive law `a ⊗ (b ⊕ c) = (a ⊗ b) ⊕ (a ⊗ c)` — the law that turns a sum-of-maxes (a ReLU stack)
 into a max-of-sums (a tropical polynomial).
 
@@ -164,14 +179,23 @@ the **same for every `T`**. (So there is no `⟦·⟧_T`; the bracket is one obj
 
 **(N3) The decision turnstile** — the native gadget that makes the trichotomy of §3 one line each:
 
-> `P ⊢_γ v   :⟺   ⟦P⟧(v) − max_{w≠v} ⟦P⟧(w) ≥ γ`            ("coalition `P` decides `v` with margin ≥ `γ`")
+> `P ⊢ v     :⟺   ⟦P⟧(v) − max_{w≠v} ⟦P⟧(w) > 0`            ("coalition `P` decides `v`" — **strict**)
+> `P ⊢_γ v   :⟺   ⟦P⟧(v) − max_{w≠v} ⟦P⟧(w) ≥ γ`, `γ > 0`   ("… with margin ≥ `γ`"; implies `P ⊢ v`)
 
-(write `P ⊢ v` for `γ = 0`). This is exactly `Separation.thy`'s `decides` predicate, now margin-indexed,
-and it unifies the regimes:
+The unsubscripted turnstile is **strict** (a tie decides nothing), so `P ⊢ v` is *exactly* the kernel
+predicate `decides` (`PIC_Core.thy`; `Separation.thy`). This is why the irreducibility theorems of §5.7
+apply to the trichotomy below verbatim.
+
+**Bias.** Like `decides`, the turnstile reads `⟦P⟧` only, *without* `b_v`. So `S ⊢ v` ⟺ "the model strictly
+decodes `v`" holds exactly when `b ≡ 0`, the usual case for transformer unembeddings. When `b ≠ 0`, adjoin
+the bias as a source: append a coordinate carrying `b_v` to each `U_v`, and add the source `d_b = e_new`.
+Then `⟦S ∪ {b}⟧(v) = L(v)`, and everything below applies to the augmented source set.
+
+It unifies the regimes:
 
 | regime | in turnstile notation | diagnostic |
 |--------|------------------------|------------|
-| **retrieved** | `∃ j∈S.  {j} ⊢_γ v` (a singleton decides) | high `μ_t` |
+| **retrieved** | `∃ j∈S.  {j} ⊢ v` (a singleton decides; `{j} ⊢_γ v` is the margin-`γ` strengthening) | `μ_t ≥ 1` |
 | **composed** | `S ⊢ v`  but  `∀ j∈S. ¬({j} ⊢ v)` | `μ_t = 0` |
 | **irreducible** | `S ⊢ v`  and  `∀ P ⊊ S, P≠∅.  ¬(P ⊢ v)` | minimal coalition |
 | **γ-decodable** (§5.1) | `∃ r, ‖r‖≤1.  S ⊢_γ v` at residual `r` | frame-side |
@@ -188,19 +212,25 @@ split are native — they are what a tropical-geometry or provenance-semiring pa
 
 ## 3. PIC as a calculus
 
-**Syntax.** Sources are weighted clauses; a **derivation** of `v` is a finite **coalition**
-`P ⊆ S` whose incidences combine, under `⊗` within the coalition and `⊕` across alternatives, to
-support `v`.
+**Syntax.** Sources are weighted facts, and a **coalition** `P ⊆ S` is a derivation body whose incidences
+combine under `⊗`. In the decode fragment each proposition `v` has exactly **one** derivation: the full
+coalition `S`, plus the bias. As in §1.3, `⊕_T` ranges over the **competing propositions** (the alternative
+answers to the decode query). It does **not** range over alternative derivations of a single `v`.
 
-**Semantics.** Semiring **provenance** in the style of Green–Karvounarakis–Tannen: the value of `v`
-is an element of `R_T` accumulated over derivations, and the Gram kernel `G` supplies the continuous
-overlap that a Boolean provenance semiring lacks. The frozen-model reading is the log-semiring
-provenance; the geometric reading is the tropical provenance.
+**Semantics.** Semiring annotation in the style of Green–Karvounarakis–Tannen: `v`'s annotation is
+`L(v) ∈ R_T`, and the Gram kernel `G` supplies the continuous overlap that a Boolean annotation lacks.
+Because `v` has a single derivation, its provenance polynomial is the single monomial `L(v)`. `⊕_T`
+enters one level up, at the query, as the partition `Z_T = ⊕_{T,v} L(v)`: the log-partition at `T = 1`
+and the decode value at `T = 0`. A genuine `⊕` over *alternative derivations of the same atom* (what GKT
+provenance is built for) arises only in the **recursive** fragment (the layer program, §6.5), not in the
+one-step decode. The decision predicates are **not** semiring values. The margin
+`m(t) = L(t) ⊘ ⊕_{0, w≠t} L(w)` uses the `⊗`-inverse (max-plus on `ℝ` is a semifield) and always the
+tropical sum. So the turnstile is a tropical side condition on the annotations, at every `T`.
 
 **Inference / decision rules** (in the native notation of §2.5):
 - *Aggregate:* `L(v) = ⟦S⟧(v) ⊗ b_v`; decode `⊤(S) = argmax_v L(v)` (`T`-invariant, §3.1); the
   `T`-family only sets how the cross-token partition `Z_T = ⊕_{T,v} L(v)` normalises confidence.
-- *Retrieved:* `∃ j∈S. {j} ⊢_γ v` — a singleton coalition already decides `v` (high `μ_t`).
+- *Retrieved:* `∃ j∈S. {j} ⊢ v` — a singleton coalition already decides `v` (`μ_t ≥ 1`).
 - *Composed:* `S ⊢ v` but `∀ j∈S. ¬({j} ⊢ v)` — the decision is carried by a coalition, no single
   source (`μ_t = 0`).
 - *Irreducible:* `S ⊢ v` and `∀ P ⊊ S, P≠∅. ¬(P ⊢ v)` — no proper non-empty sub-coalition decides
@@ -356,9 +386,11 @@ The split is not two unrelated bound-collections — it is the **two arities of 
 | **packing excess** | `#variables > rank` | forced **interference** | Welch: `Σ_{i≠j}⟨f_i,f_j⟩² ≥ n(n−M)/M` | §5.3 |
 
 So **"two-sided packing" = a simultaneous bound on a polynomial's monomial-count and its variable-rank**,
-with Welch as the obstruction that appears exactly when the `⊗`-side (sources) is overpacked relative to
-its rank. The frame side (`§5.1`, slack ~`10^59` for real `d`) is rarely binding; the **generator side
-(`§5.2`–`§5.3`) is the side that binds** — superposition is forced on the writers, not on the readouts.
+Welch is the interference floor on **both** sides. The readouts are overpacked too: `nₚ ≫ d`, so
+`FP(U) ≥ W > 0` and the unembedding frame is in superposition. On the frame side that superposition costs
+no decodability (`§5.1`, slack ~`10^59` for real `d`). On the **generator side** (`§5.2`–`§5.3`), the
+overpacking forces routing cross-talk. So superposition is present on both sides but **binds** only on
+the writers.
 The head/tail certificate (§5.4) is then the statement that a *sub-polynomial* (a head of monomials)
 reproduces the decode when it dominates; the margin certificate (§5.5) bounds how much the *coefficients*
 may be perturbed without changing the argmax. Every §5 theorem is one of: bound a monomial-count, bound a
@@ -373,8 +405,12 @@ variable-rank, or certify a sub-polynomial / a coefficient perturbation.
   `γ ≤ ‖U_v − U_w‖`. **The biases cancel** when the two witness inequalities are added; Cauchy–Schwarz
   and `‖r_v − r_w‖ ≤ 2` finish it.
 - **`head_capacity`** *(proved corollary).* Any set `S` of γ-decodable tokens (in particular any
-  certifiable **head**) is a **γ-code**: pairwise `‖U_v − U_w‖ ≥ γ`. By the packing bound for
-  γ-separated codes in `ℝ^d`,  **`|S| ≤ (1 + 2ρ/γ)^d`**, where `ρ = max_v ‖U_v‖`.
+  certifiable **head**) is a **γ-code**: pairwise `‖U_v − U_w‖ ≥ γ`. **This pairwise statement is all
+  the kernel checks.**
+- *(classical, **not** kernel-checked)* By the volume-packing bound for γ-separated codes in `ℝ^d`
+  (disjoint radius-`γ/2` balls inside the radius-`ρ+γ/2` ball), **`|S| ≤ (1 + 2ρ/γ)^d`**, where
+  `ρ = max_v ‖U_v‖`. i-orca has no Lebesgue-measure argument, so this count must not be cited as
+  *proved*.
 
 So a γ-margin decoder can keep at most `(1+2ρ/γ)^d` tokens cleanly separable — the **cell-capacity**
 half of the two-sided bound (slack is astronomical for realistic `d`; this side is rarely binding).
@@ -421,9 +457,15 @@ With `decode(L,S) = max_{v∈S} L(v)` (the tropical aggregate over a token set):
 - **`tail_is_residue`** *(proved).* If the head does **not** dominate, the decision lies in the tail —
   the explicit, uncertified **residue** (the forge-tax tokens).
 
-This is the algebra behind the empirical decode-circuit finding: a **per-position sparse head** (median
-1–3 late-MLP blocks) reproduces the decode exactly *when* it dominates the tail; harder tokens push mass
-into the tail residue.
+**What this partitions: tokens, not sources.** Here `H, T ⊆ V`, the monomials of `Z_0`. The empirical
+decode-circuit finding is different: a **per-position sparse head** (median 1–3 late-MLP blocks)
+reproduces the decode *(empirical)*. That finding partitions **sources**, `S = H_s ⊔ T_s`, and its
+certificate is §5.5, not this section. Let `L_H(v) = ⟦H_s⟧(v) + b_v` be the head-only logit. If the tail's
+contribution stays within `δ` of a common offset `c` on every candidate, `|⟦T_s⟧(v) − c| ≤ δ`, then
+`L = L_H + ⟦T_s⟧` is a `δ`-perturbation of `L_H + c`. That logit has the same argmax and margins as `L_H`.
+So a head margin `> 2δ` certifies that the head's decision is the model's. This is an immediate instance
+of `decode_margin_certified`, not separately kernel-checked. Tokens with head margin `≤ 2δ` are the
+source-side residue.
 
 ### 5.5 Decision-side robustness — margin certificate (`PIC_Core` `PIC_Logic.thy`; orig. `provable_opt/ProvableOpt_Common.thy`)
 
@@ -514,7 +556,7 @@ pieces already exist across the program and only need the algebra of §2 to name
 | ground facts on input `x` (the EDB) | the **gated rule-fires** `g_k(x)·a_k` of the encoder | `pic_encoder.enc` (§4.3); `fieldrun --pil-dump` `contrib` |
 | atoms / fact weights | incidences `j ▷ v` valued in `R_T` | the `contrib` matrix |
 | coalition / derivation | `P ⊢ v` (a `⊗`-monomial over body sources) | the turnstile §2.5 |
-| answer / model | the lfp of the immediate-consequence operator `T_P` | i-orca `ProvableOpt_Common` |
+| answer / model | the lfp of the immediate-consequence operator `T_P` | i-orca `PIC_Logic` (`Tp`/`answer`), `PIC_Forward` |
 | query | the decode `⊤(S) = ⊕_T`-argmax over propositions | `fieldrun` decode |
 | magic-sets / demand transform | **demand-closure** `lfp(restrict T D) = lfp T ∩ D` *(proved)* | §5.6, `ProvableOpt.thy` |
 | program emission | a recursive Soufflé/Datalog program | `fieldrun --datalog` (`LOGIC_EXPORT`) |
@@ -536,12 +578,28 @@ N1): the fact weights are not given but **derived from geometry**, `j ▷ v = �
 
 So PIC *does* lend itself to a logic-programming language, and the **type discipline is the frame/decode
 separation** (§4): a PIC program is *frame-side* clauses (the geometry of `{U_v}` — what overlaps what)
-plus *decode-side* queries (margins, multiplicity, evaluated in `R_T`). The proved demand-closure theorem
-(§5.6) is precisely the soundness of the standard **magic-sets / demand** optimization for such a
-language, and the margin certificate (§5.5) bounds how much a clause weight may drift before an answer
-flips. A concrete `pic`-LP would be a semiring-parameterized weighted Datalog whose immediate-consequence
-operator is `T_P(I) = { v : ∃ P ⊆ I, P ⊢ v }`, evaluated in `R_T`, with the frame as the (learnable)
-fact-weight oracle — the analysis (`fieldrun --datalog`), the semantics (i-orca `lfp`/demand-closure),
+plus *decode-side* queries (margins, multiplicity, evaluated in `R_T`).
+
+**Two strata, and only one recursive.** Sources and propositions are different sorts, so the operator has
+to be typed.
+- **Decode stratum (non-recursive).** Atoms are source facts `src(j)`, weighted by `j ▷ v`, and decision
+  atoms `dec(v)`. The turnstile is the rule scheme `dec(v) ⟸ {src(j) : j ∈ P}` whenever `P ⊢ v`, so
+  `T_P(I) = I ∪ { dec(v) : ∃ P ⊆ {j : src(j) ∈ I}. P ⊢ v }`. No `dec` atom occurs in a body, so the lfp is
+  reached in one step.
+- **Layer stratum (recursive).** Atoms `(ℓ, x)` ("the residual at layer `ℓ` is `x`"); each layer is a
+  clause `(ℓ+1, step ℓ x) ⟸ (ℓ, x)`. The least model is exactly the forward trajectory *(proved,
+  `PIC_Forward.thy` `lfp_is_trajectory`)*. The logits are its final fact's frame read-out *(proved,
+  `lfp_decode_logits`)*, and the decode stratum is evaluated on top.
+
+**Scope of demand closure.** `demand_restrict_lfp` (§5.6; `PIC_Logic.thy`) is proved for any **monotone**,
+demand-closed set operator on atoms. That makes it the soundness of **magic-sets / demand** for the layer
+stratum, where values ride as atom arguments. The `sum`/`max` aggregates of the decode stratum are *not*
+monotone set operators, so a demand theorem for weighted aggregate evaluation is **open**. (The
+likely route is stratified: the decode stratum is non-recursive and runs on the layer stratum's fixed
+output, so it would suffice to show that each aggregate reads only demanded atoms. This is not attempted.) The margin
+certificate (§5.5) bounds how much a clause weight may drift before an answer flips. A concrete `pic`-LP
+would be a semiring-parameterized weighted Datalog with these two strata, with the frame as the
+(learnable) fact-weight oracle — the analysis (`fieldrun --datalog`), the semantics (i-orca `lfp`/demand-closure),
 and the learnable weights (`pil`) are the three components, already built; `pic` is their shared grammar.
 *(This is the `LOGIC_EXPORT` / `PROVABLE_OPT` thread, given its algebraic spine.)*
 
