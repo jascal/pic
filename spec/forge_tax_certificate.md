@@ -20,7 +20,7 @@ The negative result says the freedom must **not** include the computation. So:
 - sources `S`, `|S| = M` (the DLA blocks; or, at neuron granularity, the output-weight columns);
 - per source `j` and position `x`, the **contribution vector** `d_j(x) ∈ ℝ^d` — the block's additive write
   to the residual (fieldrun's `residual_decomp`), so the residual is `r_x = Σ_{j∈S} d_j(x)`;
-- the decoded token `t_x ∈ V` and a competitor set `W_x ⊆ V` (the top-K candidates, `t_x ∈ W_x`).
+- the decoded token `t_x ∈ V` and a competitor set `C_x ⊆ V` (the candidate set: target plus top competitors, `t_x ∈ C_x`).
 
 The `d_j(x)` are the model's **computation** — what each source actually wrote on each input. They stay
 fixed (freeing them is what made the behavioral version collapse).
@@ -38,9 +38,9 @@ changing the computation." (Neuron reading: `d_j(x) = g_j(x)·a_j` with measured
 Fix a margin `γ > 0`.
 
 - **Faithful** — the decoder reproduces every observed decision:
-  > `∀ x∈X, ∀ v∈W_x∖{t_x}:   ⟨r_x, U_{t_x} − U_v⟩ + (b_{t_x} − b_v) ≥ γ.`
+  > `∀ x∈X, ∀ v∈C_x∖{t_x}:   ⟨r_x, U_{t_x} − U_v⟩ + (b_{t_x} − b_v) ≥ γ.`
 - **Coalition `P ⊆ S` decides `x`** — the partial residual `r_x^P = Σ_{j∈P} d_j(x)` alone decodes `t_x`:
-  > `∀ v∈W_x∖{t_x}:   ⟨r_x^P, U_{t_x} − U_v⟩ + (b_{t_x} − b_v) ≥ γ.`
+  > `∀ v∈C_x∖{t_x}:   ⟨r_x^P, U_{t_x} − U_v⟩ + (b_{t_x} − b_v) ≥ γ.`
   **Single-source** is `|P| = 1` (the retrieval / `μ_t` regime).
 
 Because `r_x` and `r_x^P` are **fixed vectors** (measured), every constraint above is **linear** in the

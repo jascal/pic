@@ -1,8 +1,14 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.1). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.1 (2026-09-25)** — notation only; no claims changed. Each symbol now has one meaning (§8):
+> head/tail sets `V_head`/`V_tail` (tokens) and `S_head`/`S_tail` (sources), not `H`/`T`; `u_max` for
+> `max‖U_v‖`, not `ρ`; token subsets `V′`, not `S`; layer count `n_ℓ`, not `L`; residual space `ℋ`, not
+> `H`; consequence operator `𝒯_Π` of program `Π`, not `T_P`; norm gain `θ`, not `g`; routing gates `g_k`,
+> not `h_k`; block index `j`, not `b`; tail offset and bias shift `κ`, not `c`.
+>
 > **v0.3 (2026-09-24)** — corrections from external review; no new theorems.
 > - PR is no longer read as coalition size or rank (§4.1), and the `r_eff`↔`τ★` link is open (§7).
 > - Decode invariances and the frame representative are now stated, and "projective" is defined (§1.4).
@@ -20,7 +26,7 @@ three repos of the program at once:
 > - §7 is reconciled: no "RESOLVED" items without an artifact, and the free-gate argument is tagged open.
 >
 > **v0.2 (2026-09-24)** — kernel-scope pass; no new theorems. The turnstile `P ⊢ v` is now strict, which
-> equals the kernel `decides`. The `(1+2ρ/γ)^d` count and the `−∞` / `T>0` semiring laws are marked as
+> equals the kernel `decides`. The `(1+2u_max/γ)^d` count and the `−∞` / `T>0` semiring laws are marked as
 > not kernel-checked. `⊕_T` ranges over tokens throughout (§3). The LP reading is split into
 > decode and layer strata (§6.5), with weighted demand closure tagged open. The sparse block-head is
 > certified via §5.5, not §5.4.
@@ -42,7 +48,7 @@ analysis already runs in and the existing proofs already quantify over.
 ## 0. One-paragraph summary
 
 A transformer's next-token decision is a **semiring-weighted incidence calculus over a continuous
-inner-product geometry**. Propositions (tokens) are points `U_v` in a residual space `H = ℝ^d`;
+inner-product geometry**. Propositions (tokens) are points `U_v` in a residual space `ℋ = ℝ^d`;
 sources (DLA blocks, or learned rules) are vectors `d_j`; the incidence of source `j` on proposition
 `v` is the inner product `c_j(v) = ⟨d_j, U_v⟩`. Sources of one token combine by `⊗` (= real `+`) into a
 **monomial** `L(v) = Σ_j c_j(v) + b_v`; the **tokens** then combine by a temperature-`T` semiring sum
@@ -61,8 +67,8 @@ the decode semantics fixed and *retrains the frame* to make more structure retri
 
 ### 1.1 Frame, propositions, Gram kernel
 
-Let `V` be a finite set of **propositions** (tokens), `|V| = nₚ`. Let `H` be a real inner-product
-space, in practice `H = ℝ^d` (the residual / unembedding space).
+Let `V` be a finite set of **propositions** (tokens), `|V| = nₚ`. Let `ℋ` be a real inner-product
+space, in practice `ℋ = ℝ^d` (the residual / unembedding space).
 
 A **PIC frame** is a map
 
@@ -84,7 +90,7 @@ makes PIC a model of transformers — sets a vector `d_j ∈ H` per source and d
 
 > `c_j(v) = ⟨d_j, U_v⟩`.
 
-In `fieldrun`, the sources are the **DLA blocks**: for an `L`-layer model there are `nb = 2L + 1`
+In `fieldrun`, the sources are the **DLA blocks**: for an `n_ℓ`-layer model there are `nb = 2n_ℓ + 1`
 blocks (one attention output and one MLP/expert output per layer, plus the embedding), and
 `d_j` is block `j`'s additive contribution to the residual stream at the decode position. The
 incidence matrix `c_j(v) = ⟨d_j, U_v⟩` is exactly `contrib[block][cand]` emitted by
@@ -119,14 +125,14 @@ The decode determines the frame only up to a group of transformations. Each of t
 coalition decision `P ⊢ v`, every margin, and the full softmax unchanged:
 - **common translation** `U_v ↦ U_v + h` (one `h` for all tokens). A coalition's score on *every* token
   shifts by the same `⟨Σ_{j∈P} d_j, h⟩`;
-- **common bias shift** `b_v ↦ b_v + c`;
+- **common bias shift** `b_v ↦ b_v + κ`;
 - **joint orthogonal change of basis** `U_v ↦ Q U_v`, `d_j ↦ Q d_j`.
 
 A joint positive rescaling of the frame **and the biases together**, `(U, b) ↦ (αU, αb)`, scales every
 logit by `α`. It preserves every decision, scales margins by `α`, and changes the softmax exactly as a
 temperature change would. Rescaling `U` alone, with fixed nonzero biases, does **not** preserve decisions.
 Example: `r = 1`, `U = (1, 0)`, `b = (0, 2)`. The logits `(1, 2)` pick the second token, but after `U ↦ 3U`
-the logits `(3, 2)` pick the first. With `b = 0`, rescaling `U` alone is enough. Rescaling tokens **independently**, `U_v ↦ λ_v U_v`, does **not**
+the logits `(3, 2)` pick the first. With `b = 0`, rescaling `U` alone is enough. Rescaling tokens **independently**, `U_v ↦ σ_v U_v`, does **not**
 preserve decisions in general.
 
 **Consequence for frame-side quantities.** The cosine Gram, coherence, `FP` and `FP/W` (§4.2) are **not**
@@ -135,7 +141,7 @@ behaviour. A change in `FP` counts as a behavioural change only once the represe
 `geometry.py` currently computes them on the raw frame, uncentred. The natural convention is the centred
 representative `U_v − mean_w U_w`, which removes the translation component the decode cannot see. Until
 one convention is adopted, report which frame the numbers were computed on. The metric is the Euclidean
-inner product of `H`. It is fixed, not learned.
+inner product of `ℋ`. It is fixed, not learned.
 
 **On the name.** "Projective" refers to the *direction* reading of the frame: the cosine Gram depends on
 each `U_v` only up to positive rescaling. It is **not** an invariance of the decode, which by the above is
@@ -232,7 +238,7 @@ apply to the regimes below verbatim.
 
 **Bias.** Like `decides`, the turnstile reads `⟦P⟧` only, *without* `b_v`. So `S ⊢ v` ⟺ "the model strictly
 decodes `v`" holds exactly when `b ≡ 0`, the usual case for transformer unembeddings. When `b ≠ 0`, adjoin
-the bias as a source: append a coordinate carrying `b_v` to each `U_v`, and add the source `d_b = e_new`.
+the bias as a source: append a coordinate carrying `b_v` to each `U_v`, and add the source `d_bias = e_new`.
 Then `⟦S ∪ {b}⟧(v) = L(v)`, and everything below applies to the augmented source set.
 
 It unifies the regimes:
@@ -291,29 +297,29 @@ tropical sum. So the turnstile is a tropical side condition on the annotations, 
 
 **Soundness (the two anchors).**
 - *Log-semiring ⇒ transformer.* The interface must be stated precisely. The final normalization is
-  **folded** into the sources, and the `d̃_b` that `fieldrun` emits are these folded writes in unembed
+  **folded** into the sources, and the `d̃_j` that `fieldrun` emits are these folded writes in unembed
   space (`recursion_probe.rs`, `--source-dump`/`--pil-dump`), **not** the raw block writes. Let `s` be the
-  per-position inverse scale, computed once from the **full** pre-norm residual and then frozen. Let `g`
-  be the learned gain.
-  - **RMSNorm** (no centring, no bias): `d̃_b = s · g ⊙ d_b`.
+  per-position inverse scale, computed once from the **full** pre-norm residual and then frozen. Let `θ`
+  be the learned gain (not to be confused with the gates `g_k`).
+  - **RMSNorm** (no centring, no bias): `d̃_j = s · θ ⊙ d_j`.
   - **LayerNorm** (`fieldrun/src/neox.rs`, `residual_normed_writes`):
-    `d̃_b = s · g ⊙ (d_b − mean(d_b)) + 1[b = embed] · β`.
+    `d̃_j = s · θ ⊙ (d_j − mean(d_j)) + 1[j = embed] · β`.
     Centring is applied **per block**, using each write's own mean. Because means are linear,
-    `Σ_b (d_b − mean(d_b)) = x − mean(x)`, so subtracting the full-residual mean from every block would
+    `Σ_j (d_j − mean(d_j)) = x − mean(x)`, so subtracting the full-residual mean from every block would
     subtract it once per block. The LayerNorm bias `β` is added once, **by convention to the embedding
     block**.
 
-  Then `Σ_b d̃_b = norm(x)`, and reconstruction is exact. Both conventions are choices that affect
+  Then `Σ_j d̃_j = norm(x)`, and reconstruction is exact. Both conventions are choices that affect
   attribution. Per-block centring decides how the common mode is shared out among blocks, and placing `β`
   on the embedding block credits it with the norm's bias. Any coalition statement on LayerNorm models
   inherits these choices. Three different claims then need to be kept apart:
-  1. **Algebraic reconstruction.** Given the frozen norm, `Σ_b ⟨d̃_b, U_v⟩ + b_v` equals the model logit
+  1. **Algebraic reconstruction.** Given the frozen norm, `Σ_j ⟨d̃_j, U_v⟩ + b_v` equals the model logit
      by linearity. The linear part is `logit_is_residual_reading` *(proved)*. Folding the norm is exact
      for the given input, but it is an interface convention, not a theorem.
   2. **Numerical logit error** between the reconstructed and the model logits. It is **not currently
      reported**.
   3. **Decision agreement.** This is what "recon `= 1.00`" measures: the reconstructed argmax over the
-     emitted **candidate set** (target plus top-`K` competitors) equals the model's argmax *(empirical;
+     emitted **candidate set** (target plus the top competitors, their number set by `--kcand`) equals the model's argmax *(empirical;
      every architecture tested: rope, neox, MoE, MLA)*. It does not by itself establish equality of the
      logits or of the full distributions.
 
@@ -401,7 +407,7 @@ PIC *is* a sandwich — there are **three** roles, not two, and the frame is the
 |----------|---------|------|
 | **logit** `L(v)` | `Σ_j ⟨d_j, U_v⟩ + b_v` | `geometry.py:logits_from_incidences` |
 | **margin** `m(t)` | `L(t) − max_{v≠t} L(v)` (top-1 vs top-2, or target-vs-worst) | `geometry.py:margin_to_worst`; `recursion_probe.rs` (`logits[0]−logits[1]`) |
-| **participation ratio** `PR` | `(Σ_j |w_j|)² / Σ_j w_j²` over incidence magnitudes `w_j = |c_j(t)|` | `geometry.py:participation_ratio` |
+| **participation ratio** `PR` | `(Σ_j |c_j(t)|)² / Σ_j c_j(t)²` over the target incidences | `geometry.py:participation_ratio` |
 | **multiplicity** `μ_t` | `#{ j : argmax_v c_j(v) = t }` — sources whose *own* argmax is the target | `recursion_probe.rs:run_source_pr_dump` |
 | **ambiguity** `η²` | between-class / total variance of candidate firing on the lowest-margin slice | `scoring.py:ambiguity_resolution_score` |
 
@@ -437,11 +443,11 @@ the turnstile's job (§2.5). `μ_t` is the **unanimity** count, subject to the t
 over-complete frame `nₚ > d`). `FP` is computed from cosine similarities, so it depends only on the
 **normalized** directions `Ū_v = U_v/‖U_v‖`. Rescaling the lengths of the `U_v` leaves it unchanged, and
 its equality cases concern `{Ū_v}`, not `{U_v}`:
-- **`nₚ > d` (so `W > 0`):** `FP = W` iff `{Ū_v}` is a **unit-norm tight frame** for `H` (the
+- **`nₚ > d` (so `W > 0`):** `FP = W` iff `{Ū_v}` is a **unit-norm tight frame** for `ℋ` (the
   Benedetto–Fickus characterization of frame-potential minimizers). Equiangularity is an *additional*
   condition: it is the equality case of the **max**-coherence Welch bound, not of `FP`.
 - **`nₚ ≤ d` (so `W = 0`):** `FP = 0` iff the `Ū_v` are pairwise orthogonal. An orthonormal collection
-  attains this without being a tight frame for all of `H` when `nₚ < d`.
+  attains this without being a tight frame for all of `ℋ` when `nₚ < d`.
 
 The ratio `FP / W` is defined only when `W > 0`, i.e. `nₚ > d`, and there it reports frame quality. These are the quantities `pil`'s frame-side objective drives. They depend on the
 frame representative (§1.4).
@@ -491,7 +497,7 @@ The split is not two unrelated bound-collections — it is the **two arities of 
 
 | | algebraic role | what is bounded | by | theorem |
 |---|---|---|---|---|
-| **monomials** (tokens `v`) | the `⊕`-arity | how many can be cleanly **decoded** (γ-separated) | frame geometry: `\|S\| ≤ (1+2ρ/γ)^d` | §5.1 |
+| **monomials** (tokens `v`) | the `⊕`-arity | how many can be cleanly **decoded** (γ-separated) | frame geometry: `\|V′\| ≤ (1+2u_max/γ)^d` | §5.1 |
 | **variables** (sources `j`) | the `⊗`-arity | how many are **independent** writers | generator rank: `dim ≤ min(M,d)` | §5.2 |
 | **packing excess** | `#variables > rank` | forced **interference** | Welch: `Σ_{i≠j}⟨f_i,f_j⟩² ≥ n(n−M)/M` | §5.3 |
 
@@ -515,15 +521,15 @@ variable-rank, or certify a sub-polynomial / a coefficient perturbation.
 - **`margin_pair_separation`** *(proved).* Two γ-decodable tokens have separated frames:
   `γ ≤ ‖U_v − U_w‖`. **The biases cancel** when the two witness inequalities are added; Cauchy–Schwarz
   and `‖r_v − r_w‖ ≤ 2` finish it.
-- **`head_capacity`** *(proved corollary).* Any set `S` of γ-decodable tokens (in particular any
+- **`head_capacity`** *(proved corollary).* Any set `V′ ⊆ V` of γ-decodable tokens (in particular any
   certifiable **head**) is a **γ-code**: pairwise `‖U_v − U_w‖ ≥ γ`. **This pairwise statement is all
   the kernel checks.**
 - *(classical, **not** kernel-checked)* By the volume-packing bound for γ-separated codes in `ℝ^d`
-  (disjoint radius-`γ/2` balls inside the radius-`ρ+γ/2` ball), **`|S| ≤ (1 + 2ρ/γ)^d`**, where
-  `ρ = max_v ‖U_v‖`. i-orca has no Lebesgue-measure argument, so this count must not be cited as
+  (disjoint radius-`γ/2` balls inside the radius-`u_max+γ/2` ball), **`|V′| ≤ (1 + 2u_max/γ)^d`**, where
+  `u_max = max_v ‖U_v‖`. i-orca has no Lebesgue-measure argument, so this count must not be cited as
   *proved*.
 
-So a γ-margin decoder can keep at most `(1+2ρ/γ)^d` tokens cleanly separable — the **cell-capacity**
+So a γ-margin decoder can keep at most `(1+2u_max/γ)^d` tokens cleanly separable — the **cell-capacity**
 half of the two-sided bound. The bound is loose by an astronomical factor for realistic `d`, so it is not
 the constraint on real models. That looseness says nothing about whether frame geometry limits actual
 margins (§7, coherence ⇒ margin).
@@ -531,9 +537,9 @@ margins (§7, coherence ⇒ margin).
 ### 5.2 Generator side — routing rank (`tropical/RoutingRank.thy`)
 
 `M` trainable rules write logit adjustments along fixed readout vectors `{a_1,…,a_M}`; whatever the
-input-dependent gates `h_k(z)` do, the adjustment lies in their span.
+input-dependent gates `g_k(x)` do, the adjustment lies in their span.
 
-- **`routing_superposition`** *(proved).* `Σ_{i∈I} h_i · a_i ∈ span(a_I)` **and**
+- **`routing_superposition`** *(proved).* `Σ_{i∈I} g_i · a_i ∈ span(a_I)` **and**
   `dim span(a_I) ≤ |I| = M`. Every rule adjustment lives in a fixed subspace of dimension
   `≤ min(M, d)`. **Superposition is forced when `n > M`** (more routing decisions than rules).
 
@@ -561,21 +567,21 @@ the Welch setup on the rule-activation side.
 
 ### 5.4 The decode certificate — head/tail (`tropical/HeadTail.thy`)
 
-With `decode(L,S) = max_{v∈S} L(v)` (the tropical aggregate over a token set):
+With `decode(L,V′) = max_{v∈V′} L(v)` (the tropical aggregate over a token set `V′ ⊆ V`):
 
-- **`decode_partition`** *(proved).* `decode(L, H∪T) = max(decode(L,H), decode(L,T))`.
-- **`head_certifies_decode`** *(proved).* If `decode(L,T) ≤ decode(L,H)` then
-  `decode(L, H∪T) = decode(L,H)` — a **head** that dominates the **tail** reproduces the decision.
+- **`decode_partition`** *(proved).* `decode(L, V_head ∪ V_tail) = max(decode(L,V_head), decode(L,V_tail))`.
+- **`head_certifies_decode`** *(proved).* If `decode(L,V_tail) ≤ decode(L,V_head)` then
+  `decode(L, V_head ∪ V_tail) = decode(L,V_head)` — a **head** that dominates the **tail** reproduces the decision.
 - **`head_argmax_in_head`** *(proved).* …and the argmax token lies in the head.
 - **`tail_is_residue`** *(proved).* If the head does **not** dominate, the decision lies in the tail —
   the explicit, uncertified **residue** (the forge-tax tokens).
 
 **What this partitions: tokens, not sources.** Here `H, T ⊆ V`, the monomials of `Z_0`. The empirical
 decode-circuit finding is different: a **per-position sparse head** (median 1–3 late-MLP blocks)
-reproduces the decode *(empirical)*. That finding partitions **sources**, `S = H_s ⊔ T_s`, and its
-certificate is §5.5, not this section. Let `L_H(v) = ⟦H_s⟧(v) + b_v` be the head-only logit. If the tail's
-contribution stays within `δ` of a common offset `c` on every candidate, `|⟦T_s⟧(v) − c| ≤ δ`, then
-`L = L_H + ⟦T_s⟧` is a `δ`-perturbation of `L_H + c`. That logit has the same argmax and margins as `L_H`.
+reproduces the decode *(empirical)*. That finding partitions **sources**, `S = S_head ⊔ S_tail`, and its
+certificate is §5.5, not this section. Let `L_head(v) = ⟦S_head⟧(v) + b_v` be the head-only logit. If the tail's
+contribution stays within `δ` of a common offset `κ` on every candidate, `|⟦S_tail⟧(v) − κ| ≤ δ`, then
+`L = L_head + ⟦S_tail⟧` is a `δ`-perturbation of `L_head + κ`. That logit has the same argmax and margins as `L_head`.
 So a head margin `> 2δ` certifies that the head's decision is the model's. This is an immediate instance
 of `decode_margin_certified`, not separately kernel-checked. Tokens with head margin `≤ 2δ` are the
 source-side residue.
@@ -596,9 +602,9 @@ the LP clause-weight-drift bound — the decision-side companion to demand-closu
 For a monotone one-step consequence operator `T` and a demand set `D`, `T` is **demand-closed** if
 `T(S) ∩ D = T(S ∩ D) ∩ D` (producers of demanded atoms read only demanded atoms).
 
-- **`demand_restrict_lfp`** *(proved).* `lfp(restrict_op T D) = lfp(T) ∩ D` — running the restricted
+- **`demand_restrict_lfp`** *(proved).* `lfp(restrict_op 𝒯 D) = lfp(𝒯) ∩ D` — running the restricted
   program computes exactly the demanded part of the full model. Instance: dropping every non-final-layer
-  accumulator preserves the decode (`Logit` derivable iff it was), a non-vacuous saving for `L ≥ 1`.
+  accumulator preserves the decode (`Logit` derivable iff it was), a non-vacuous saving for `n_ℓ ≥ 1`.
 
 ### 5.7 Irreducibility (`fieldrun/separation/Separation.thy`)
 
@@ -670,9 +676,9 @@ model's decision is the full-coalition aggregate. Reading the calculus as a logi
 | ground facts on input `x` (the EDB) | the **gated rule-fires** `g_k(x)·a_k` of the encoder | `pic_encoder.enc` (§4.3); `fieldrun --pil-dump` `contrib` |
 | atoms / fact weights | incidences `j ▷ v` valued in `R_T` | the `contrib` matrix |
 | coalition witness | `P ⊢ v` (a `⊗`-monomial over body sources); the decision is the full-coalition case | the turnstile §2.5 |
-| answer / model | the lfp of the immediate-consequence operator `T_P` | i-orca `PIC_Logic` (`Tp`/`answer`), `PIC_Forward` |
+| answer / model | the lfp of the immediate-consequence operator `𝒯_Π` of program `Π` | i-orca `PIC_Logic` (`Tp`/`answer`), `PIC_Forward` |
 | query | the decode `⊤(S) = ⊕_T`-argmax over propositions | `fieldrun` decode |
-| magic-sets / demand transform | **demand-closure** `lfp(restrict T D) = lfp T ∩ D` *(proved)* | §5.6, `ProvableOpt.thy` |
+| magic-sets / demand transform | **demand-closure** `lfp(restrict 𝒯 D) = lfp 𝒯 ∩ D` *(proved)* | §5.6, `ProvableOpt.thy` |
 | program emission | a stratified Soufflé/Datalog program with `sum`/`max` aggregates | `fieldrun --datalog` (`LOGIC_EXPORT`) |
 
 **The encoder (§4.3) is the fact-generating (EDB) layer** — this is why the LP formalism needs it. The
@@ -732,7 +738,7 @@ and the learnable weights (`pil`) are the three components, already built; `pic`
 *(This is the `LOGIC_EXPORT` / `PROVABLE_OPT` thread, given its algebraic spine.)*
 
 > **Full treatment: [`PIC_LP.md`](./PIC_LP.md)** — the language spec (syntax grounded in the actual
-> `fieldrun export --logic` emission, the `T_P`/lfp semantics, the semiring modes, the two recursion
+> `fieldrun export --logic` emission, the `𝒯_Π`/lfp semantics, the semiring modes, the two recursion
 > sources, demand-closure = magic-sets, and a DCG-style grammar surface for the recursive fragment),
 > with the kernel theory in i-orca `examples/pic_core/PIC_Logic.thy` (`Tp`/`answer`/`reach_all`/
 > `demand_restrict_lfp`/`decode_magic_sets_lossless`, all kernel-checked, 0 sorry).
@@ -818,7 +824,7 @@ covers the §5 theorem set except the quantitative Welch floor (`Welch.thy`) and
 | symbol | meaning |
 |--------|---------|
 | `V`, `nₚ` | propositions (tokens); their count |
-| `H = ℝ^d`, `d` | residual / unembedding space; its dimension |
+| `ℋ = ℝ^d`, `d` | residual / unembedding space; its dimension |
 | `U_v`, `U` | frame vector of proposition `v`; the frame map |
 | `G(v,w)`, `ρ(v,w)` | Gram kernel `⟨U_v,U_w⟩`; cosine Gram |
 | `S`, `J`, `d_j` | source set; its size; source `j`'s residual vector |
@@ -826,12 +832,20 @@ covers the §5 theorem set except the quantitative Welch floor (`Welch.thy`) and
 | `L(v)`, `b_v` | aggregate score (logit) of `v`; bias |
 | `T`, `⊕_T`, `⊗` | semiring temperature; `T`-sum; product (`= +`) |
 | `m(t)` | margin `L(t) − max_{v≠t} L(v)` |
-| `PR` | participation ratio `(Σ|w|)²/Σw²` (effective # sources) |
+| `PR` | participation ratio `(Σ_j|c_j(t)|)²/Σ_j c_j(t)²` (participation under a fixed decomposition, §4.1) |
 | `μ_t` | multiplicity: # sources whose own argmax is `t` |
 | `η²` | ambiguity (between/total variance on low-margin slice) |
 | `FP`, `W` | frame potential; Welch floor `(nₚ−d)/(d(nₚ−1))` |
-| `γ`, `ρ`, `M`, `n` | decode margin; `max‖U_v‖`; #rules; #routing decisions |
+| `γ`, `u_max`, `M`, `n` | decode margin; `max_v‖U_v‖`; #rules; #routing decisions |
 | `δ`, `2δ` | per-token perturbation bound; tight margin-certificate threshold |
+| `V′`, `V_head`, `V_tail` | a token subset; head/tail token sets (§5.4) |
+| `S_head`, `S_tail`, `κ` | head/tail source sets; common tail offset (§5.4) |
+| `P`, `A` | coalition `⊆ S`; the available sources in a decode interpretation (§6.5) |
+| `Π`, `𝒯_Π`, `𝒯`, `D` | logic program; its immediate-consequence operator; a generic monotone operator; demand set |
+| `K`, `a_k`, `g_k(x)` | rule set; fixed write directions; input-dependent gates |
+| `n_ℓ`, `nb = 2n_ℓ+1` | layer count; DLA block count |
+| `s`, `θ`, `β`, `d̃_j` | final-norm inverse scale; norm gain; norm bias; norm-folded source (§3) |
+| `H` | next-token entropy (§7 only) |
 | `τ★` | effective packing rank (open); measured proxy `r_eff` = centred decode-block PR (empirical), link open (§7) |
 
 ---
