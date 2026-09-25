@@ -103,7 +103,9 @@ Three transformations leave every coalition decision, every margin and the full 
   \item a common bias shift;
   \item a joint orthogonal change of basis of $\{U_v\}$ and $\{d_j\}$.
 \end{itemize}
-A joint positive rescaling preserves decisions but acts as a temperature change. Independent per-token
+Rescaling the frame and the biases together, $(U,b)\mapsto(\alpha U,\alpha b)$ with $\alpha>0$, preserves
+decisions and acts as a temperature change. Rescaling $U$ alone with fixed nonzero biases does not: with
+$r=1$, $U=(1,0)$, $b=(0,2)$, the second token wins, but after $U\mapsto3U$ the first wins. Independent per-token
 rescaling $U_v\mapsto\lambda_vU_v$ does \emph{not} preserve decisions in general. The cosine Gram, coherence
 and frame potential are not translation-invariant. They are properties of a chosen \emph{representative}
 of the frame, such as the centred frame $U_v-\operatorname{mean}_wU_w$, not of decoder behaviour, and a
@@ -249,8 +251,12 @@ tropical sum. The turnstile is therefore a tropical side condition on annotation
 \paragraph{Soundness anchors.}
 \begin{itemize}[nosep]
   \item \emph{Log-semiring $\Rightarrow$ transformer.} The sources are block writes with the final
-        normalization \emph{folded in}: the per-position norm scale (and LayerNorm centring) is computed
-        from the full residual, frozen, and applied to each write. Three claims must be kept apart.
+        normalization \emph{folded in}. Let $s$ be the inverse scale, computed once from the full
+        pre-norm residual and frozen, and $g$ the learned gain. For RMSNorm, $\tilde d_b=s\,g\odot d_b$.
+        For LayerNorm, $\tilde d_b=s\,g\odot(d_b-\operatorname{mean}(d_b))+\mathbf 1_{b=\mathrm{embed}}\,\beta$:
+        centring is per block (the means add up to the full-residual mean), and the norm bias $\beta$ is
+        assigned by convention to the embedding block. Then $\sum_b\tilde d_b$ is the normed residual. Both
+        conventions affect coalition attribution. Three claims must be kept apart.
         \begin{enumerate}[nosep]
           \item \emph{Algebraic reconstruction.} Given the frozen norm, the incidence sum equals the model
                 logit by linearity. The linear part is \texttt{logit\_is\_residual\_reading} \proved{}; the
@@ -351,9 +357,13 @@ job.
 \paragraph{Frame-side.}
 Gram coherence $\max_{v\neq w}|\rho(v,w)|$;\quad
 frame potential $\mathrm{FP}=\operatorname{mean}_{v\neq w}\rho(v,w)^2$;\quad
-Welch floor $W=(n_p-d)/\bigl(d(n_p-1)\bigr)$ for $n_p>d$, else $0$. Always $\mathrm{FP}\ge W$, with
-equality exactly at a unit-norm tight frame (Benedetto--Fickus). Equiangularity is an additional
-condition: it is the equality case of the \emph{max}-coherence bound. These quantities depend on the
+Welch floor $W=(n_p-d)/\bigl(d(n_p-1)\bigr)$ for $n_p>d$, else $0$. Always $\mathrm{FP}\ge W$. Because FP
+uses cosines, it depends only on the normalized directions $\bar U_v$, and its equality cases are
+statements about them. For $n_p>d$, $\mathrm{FP}=W$ iff $\{\bar U_v\}$ is a unit-norm tight frame
+(Benedetto--Fickus). Equiangularity is an additional condition: it is the equality case of the
+\emph{max}-coherence bound. For $n_p\le d$, $W=0$ and $\mathrm{FP}=0$ iff the directions are pairwise
+orthogonal, which does not require tightness on all of $\HH$. The ratio $\mathrm{FP}/W$ is defined only
+for $W>0$. These quantities depend on the
 frame representative (Remark~\ref{rem:gauge}).
 
 \section{The two-sided packing theorems}\label{sec:thm}
@@ -501,7 +511,11 @@ two strata.
   \item \emph{The decode stratum is non-recursive and uses aggregates.} Its atoms are source facts
         $\mathrm{src}(j)$ weighted by $j\triangleright v$, and decision atoms $\mathrm{dec}(v)$. Let
         $A=\{j:\mathrm{src}(j)\in I\}$. The model's decision is the \emph{full}-coalition aggregate:
-        $\mathrm{dec}(v)$ holds iff $A\vdash v$, which derives at most one decision atom. Sub-coalition
+        $\mathrm{dec}(v)$ holds iff $A\vdash v$. Because $\vdash$ is strict, this derives at most one
+        decision atom, and none on a tie. The emitted program's \texttt{max}-aggregate \texttt{decide} is the
+        argmax relation instead, which derives every maximizer. The two agree exactly under a
+        unique-maximum precondition; otherwise a selection policy (such as the model's tie-break) must be
+        stated. Sub-coalition
         sufficiency is a separate witness relation,
         $\mathrm{wit}(P,v)\Leftrightarrow P\subseteq A\wedge P\vdash v$. Opposing singletons can witness
         different tokens at once, so an existential rule

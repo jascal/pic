@@ -69,8 +69,13 @@ retract a `decide`. So its semantics is **stratified aggregation**: evaluate the
 their lfp, then each aggregate stratum once on the completed lower strata. The Horn-clause results
 (least model, demand closure) apply to the aggregate-free strata. They do not transfer automatically to
 the aggregates. A stratified evaluator that exactly matches the emitted Soufflé program is **not yet
-specified** *(open)*. Under stratification the decoded token is the unique `t` with `decide(t)` in the
-model.
+specified** *(open)*. Under stratification `decide` is the **argmax relation**: it contains every `t`
+whose logit attains the maximum. It is a single token only under a **unique-maximum precondition**. On a
+tie it contains every maximizer. The strict coalition decision of `PIC_SPEC.md` §6.5 (`dec`) derives
+nothing on a tie, and the model's own pick applies a tie-breaking selection policy. So "the decoded token"
+is well-defined only under unique maximum or with a stated selection policy. `fieldrun` has one mode that
+emits the model's pick directly as a `decide(pred)` fact, and another that emits the aggregate rule
+above.
 
 **Semiring-weighted (provenance) evaluation.** Atoms carry weights in `R_T` (§2 of `PIC_SPEC.md`). A
 clause combines its body by `⊗`, and alternative derivations of the same head merge by `⊕_T`. This is

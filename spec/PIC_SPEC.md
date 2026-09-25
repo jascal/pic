@@ -8,7 +8,11 @@ three repos of the program at once:
 > - Decode invariances and the frame representative are now stated, and "projective" is defined (§1.4).
 > - The transformer interface is precise: norm-folded sources, and recon = decision agreement over the
 >   candidate set (§3).
-> - Laguerre weights are `‖U_v‖²+2b_v`. `FP = W` iff the frame is unit-norm tight.
+> - Laguerre weights are `‖U_v‖²+2b_v`. `FP = W` iff the *normalized* frame is unit-norm tight (`nₚ > d`),
+>   and `FP/W` is defined only for `W > 0`.
+> - Joint rescaling preserves decisions only with the biases scaled too. The LayerNorm fold is per-block
+>   centring plus `β` on the embedding block. Strict `dec`, the emitted argmax `decide` and a tie-break
+>   policy are now distinguished.
 > - The regimes are not a trichotomy, and `μ_t` has a tie caveat (§2.5).
 > - §3.1 is scoped to single-derivation answers.
 > - The decode stratum is a full-coalition aggregate, with witnesses kept separate. "ProbLog" is not
@@ -118,8 +122,11 @@ coalition decision `P ⊢ v`, every margin, and the full softmax unchanged:
 - **common bias shift** `b_v ↦ b_v + c`;
 - **joint orthogonal change of basis** `U_v ↦ Q U_v`, `d_j ↦ Q d_j`.
 
-A joint positive rescaling `U ↦ αU` preserves every decision but scales margins by `α` and changes the
-softmax: it is a temperature change. Rescaling tokens **independently**, `U_v ↦ λ_v U_v`, does **not**
+A joint positive rescaling of the frame **and the biases together**, `(U, b) ↦ (αU, αb)`, scales every
+logit by `α`. It preserves every decision, scales margins by `α`, and changes the softmax exactly as a
+temperature change would. Rescaling `U` alone, with fixed nonzero biases, does **not** preserve decisions.
+Example: `r = 1`, `U = (1, 0)`, `b = (0, 2)`. The logits `(1, 2)` pick the second token, but after `U ↦ 3U`
+the logits `(3, 2)` pick the first. With `b = 0`, rescaling `U` alone is enough. Rescaling tokens **independently**, `U_v ↦ λ_v U_v`, does **not**
 preserve decisions in general.
 
 **Consequence for frame-side quantities.** The cosine Gram, coherence, `FP` and `FP/W` (§4.2) are **not**
@@ -284,10 +291,22 @@ tropical sum. So the turnstile is a tropical side condition on the annotations, 
 
 **Soundness (the two anchors).**
 - *Log-semiring ⇒ transformer.* The interface must be stated precisely. The final normalization is
-  **folded** into the sources. Its per-position scale (and, for LayerNorm, its centring) is computed from
-  the full residual, frozen, and applied to each block's write. The `d̃_b` that `fieldrun` emits are
-  these folded writes in unembed space (`recursion_probe.rs`, `--source-dump`/`--pil-dump`), **not** the
-  raw block writes. Three different claims then need to be kept apart:
+  **folded** into the sources, and the `d̃_b` that `fieldrun` emits are these folded writes in unembed
+  space (`recursion_probe.rs`, `--source-dump`/`--pil-dump`), **not** the raw block writes. Let `s` be the
+  per-position inverse scale, computed once from the **full** pre-norm residual and then frozen. Let `g`
+  be the learned gain.
+  - **RMSNorm** (no centring, no bias): `d̃_b = s · g ⊙ d_b`.
+  - **LayerNorm** (`fieldrun/src/neox.rs`, `residual_normed_writes`):
+    `d̃_b = s · g ⊙ (d_b − mean(d_b)) + 1[b = embed] · β`.
+    Centring is applied **per block**, using each write's own mean. Because means are linear,
+    `Σ_b (d_b − mean(d_b)) = x − mean(x)`, so subtracting the full-residual mean from every block would
+    subtract it once per block. The LayerNorm bias `β` is added once, **by convention to the embedding
+    block**.
+
+  Then `Σ_b d̃_b = norm(x)`, and reconstruction is exact. Both conventions are choices that affect
+  attribution. Per-block centring decides how the common mode is shared out among blocks, and placing `β`
+  on the embedding block credits it with the norm's bias. Any coalition statement on LayerNorm models
+  inherits these choices. Three different claims then need to be kept apart:
   1. **Algebraic reconstruction.** Given the frozen norm, `Σ_b ⟨d̃_b, U_v⟩ + b_v` equals the model logit
      by linearity. The linear part is `logit_is_residual_reading` *(proved)*. Folding the norm is exact
      for the given input, but it is an interface convention, not a theorem.
@@ -415,10 +434,16 @@ the turnstile's job (§2.5). `μ_t` is the **unanimity** count, subject to the t
 | **Welch floor** `W` | `(nₚ − d) / (d (nₚ − 1))` if `nₚ > d`, else `0` | `geometry.py:welch_bound` |
 
 `FP ≥ W` always (the Welch bound is the floor of mean-squared off-diagonal coherence for an
-over-complete frame `nₚ > d`). The ratio `FP / W` reports frame quality. `FP = W` holds exactly at a
-**unit-norm tight frame** (the Benedetto–Fickus characterization of frame-potential minimizers).
-Equiangularity is an *additional* condition: it is the equality case of the **max**-coherence Welch
-bound, not of `FP`. These are the quantities `pil`'s frame-side objective drives. They depend on the
+over-complete frame `nₚ > d`). `FP` is computed from cosine similarities, so it depends only on the
+**normalized** directions `Ū_v = U_v/‖U_v‖`. Rescaling the lengths of the `U_v` leaves it unchanged, and
+its equality cases concern `{Ū_v}`, not `{U_v}`:
+- **`nₚ > d` (so `W > 0`):** `FP = W` iff `{Ū_v}` is a **unit-norm tight frame** for `H` (the
+  Benedetto–Fickus characterization of frame-potential minimizers). Equiangularity is an *additional*
+  condition: it is the equality case of the **max**-coherence Welch bound, not of `FP`.
+- **`nₚ ≤ d` (so `W = 0`):** `FP = 0` iff the `Ū_v` are pairwise orthogonal. An orthonormal collection
+  attains this without being a tight frame for all of `H` when `nₚ < d`.
+
+The ratio `FP / W` is defined only when `W > 0`, i.e. `nₚ > d`, and there it reports frame quality. These are the quantities `pil`'s frame-side objective drives. They depend on the
 frame representative (§1.4).
 
 ### 4.3 The encoder (formal model of the encode side)
@@ -678,7 +703,12 @@ to be typed.
 - **Decode stratum (non-recursive, with aggregates).** Atoms are source facts `src(j)`, weighted by
   `j ▷ v`, and decision atoms `dec(v)`. The model's decision uses the **whole** available coalition:
   `dec(v)` is derived iff `A ⊢ v`, where `A = {j : src(j) ∈ I}`. This is a `sum`/`max` aggregate over `A`,
-  not an existential over sub-coalitions, and it derives at most one `dec` atom. Sub-coalition sufficiency
+  not an existential over sub-coalitions. Because `⊢` is strict, it derives **at most one** `dec` atom,
+  and **none on a tie**. The emitted Soufflé `decide` is a different relation, the **argmax relation**
+  (`decide(T) :- logit(T,S), S = max S2 : {logit(_,S2)}`), which derives **every** maximizer. The two
+  agree exactly when the maximum is unique. On a tie `dec` is empty while `decide` has several atoms. The
+  model's own tie-broken pick is a third convention (a selection policy, emitted as a `decide(pred)` fact
+  in one `fieldrun` mode). Claims about "the decision" must say which of the three they mean. Sub-coalition sufficiency
   is a **separate** witness relation, `wit(P, v) ⟺ P ⊆ A ∧ P ⊢ v`. Opposing singletons can witness
   different tokens at once, so `wit` records coalition witnesses and is **not** the decode. A rule of
   the form `∃ P ⊆ A. P ⊢ v ⇒ dec(v)` would conflate the two. No `dec` or `wit` atom occurs in a body, so
