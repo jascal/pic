@@ -28,12 +28,17 @@
 \newcommand{\inner}[2]{\langle #1,\, #2\rangle}
 \newcommand{\Uframe}{U}
 \newcommand{\Gram}{G}
+\newcommand{\Vh}{V_{\mathrm{head}}}
+\newcommand{\Vt}{V_{\mathrm{tail}}}
+\newcommand{\Sh}{S_{\mathrm{head}}}
+\newcommand{\St}{S_{\mathrm{tail}}}
+\newcommand{\umax}{u_{\max}}
 
 \title{\textbf{Projective Incidence Calculus}\\[0.3em]
 \large A semiring-weighted incidence algebra for the transformer decode,\\
 its frozen-model geometry, and its learnable frame}
 \author{}
-\date{Draft --- companion to \texttt{spec/PIC\_SPEC.md} v0.3}
+\date{Draft --- companion to \texttt{spec/PIC\_SPEC.md} v0.3.1}
 
 \begin{document}
 \maketitle
@@ -106,7 +111,7 @@ Three transformations leave every coalition decision, every margin and the full 
 Rescaling the frame and the biases together, $(U,b)\mapsto(\alpha U,\alpha b)$ with $\alpha>0$, preserves
 decisions and acts as a temperature change. Rescaling $U$ alone with fixed nonzero biases does not: with
 $r=1$, $U=(1,0)$, $b=(0,2)$, the second token wins, but after $U\mapsto3U$ the first wins. Independent per-token
-rescaling $U_v\mapsto\lambda_vU_v$ does \emph{not} preserve decisions in general. The cosine Gram, coherence
+rescaling $U_v\mapsto\sigma_vU_v$ does \emph{not} preserve decisions in general. The cosine Gram, coherence
 and frame potential are not translation-invariant. They are properties of a chosen \emph{representative}
 of the frame, such as the centred frame $U_v-\operatorname{mean}_wU_w$, not of decoder behaviour, and a
 change in them counts as a behavioural change only once that representative is fixed. The name
@@ -136,7 +141,7 @@ decision reads off $Z_T$: at $T\to0$, $Z_0=\max_v L(v)$ and the decode is $\arg\
 $Z_1=\operatorname{logsumexp}_v L(v)$ and $p(v)=\exp(L(v)-Z_1)$. The monomials are shared across $T$; only
 $\oplus_T$ changes (Lemma~\ref{lem:tinv}).
 
-In the transformer instance, the sources are the \emph{DLA blocks}: an $L$-layer model has $n_b=2L+1$
+In the transformer instance, the sources are the \emph{DLA blocks}: an $n_\ell$-layer model has $n_b=2n_\ell+1$
 blocks (one attention and one MLP/expert write per layer, plus the embedding), and $d_j$ is block $j$'s
 additive contribution to the residual at the decode position. The incidence $c_j(v)=\inner{d_j}{U_v}$ is
 precisely the per-block contribution a decomposing runtime emits, and its source-sum reconstructs the
@@ -167,7 +172,7 @@ and for $|S|=1$ it coincides with retrieved.
 The turnstile reads the coalition bracket only, \emph{without} the bias $b_v$, again matching the kernel
 definition. $S\vdash v$ therefore coincides with ``the model strictly decodes $v$'' exactly when $b\equiv0$,
 which is the case for most transformer unembeddings. When $b\neq0$, adjoin the bias as one more source:
-append a coordinate carrying $b_v$ to each $U_v$ and a source $d_b$ equal to the matching unit vector.
+append a coordinate carrying $b_v$ to each $U_v$ and a source $d_{\mathrm{bias}}$ equal to the matching unit vector.
 Then $\llbracket S\cup\{b\}\rrbracket(v)=L(v)$, and every statement below applies to the augmented source set.
 
 \section{The semiring family}\label{sec:semiring}
@@ -252,10 +257,10 @@ tropical sum. The turnstile is therefore a tropical side condition on annotation
 \begin{itemize}[nosep]
   \item \emph{Log-semiring $\Rightarrow$ transformer.} The sources are block writes with the final
         normalization \emph{folded in}. Let $s$ be the inverse scale, computed once from the full
-        pre-norm residual and frozen, and $g$ the learned gain. For RMSNorm, $\tilde d_b=s\,g\odot d_b$.
-        For LayerNorm, $\tilde d_b=s\,g\odot(d_b-\operatorname{mean}(d_b))+\mathbf 1_{b=\mathrm{embed}}\,\beta$:
+        pre-norm residual and frozen, and $\theta$ the learned gain. For RMSNorm, $\tilde d_j=s\,\theta\odot d_j$.
+        For LayerNorm, $\tilde d_j=s\,\theta\odot(d_j-\operatorname{mean}(d_j))+\mathbf 1_{j=\mathrm{embed}}\,\beta$:
         centring is per block (the means add up to the full-residual mean), and the norm bias $\beta$ is
-        assigned by convention to the embedding block. Then $\sum_b\tilde d_b$ is the normed residual. Both
+        assigned by convention to the embedding block. Then $\sum_j\tilde d_j$ is the normed residual. Both
         conventions affect coalition attribution. Three claims must be kept apart.
         \begin{enumerate}[nosep]
           \item \emph{Algebraic reconstruction.} Given the frozen norm, the incidence sum equals the model
@@ -263,7 +268,7 @@ tropical sum. The turnstile is therefore a tropical side condition on annotation
                 fold is an exact interface convention for the given input.
           \item \emph{Numerical logit error.} This is not currently reported.
           \item \emph{Decision agreement} \empirical{}. The reconstructed argmax over the emitted candidate
-                set (target plus top-$K$ competitors) equals the model's at every measured position,
+                set (target plus a fixed number of top competitors) equals the model's at every measured position,
                 across rotary, NeoX, mixture-of-experts and latent-attention architectures. This is what
                 ``reconstruction $1.00$'' measures. It does not by itself establish equal logits or equal
                 distributions.
@@ -332,8 +337,8 @@ semiring).
 
 \paragraph{Decode-side.}
 margin $m(t)=L(t)-\max_{v\neq t}L(v)$;\quad
-participation ratio $\mathrm{PR}=\bigl(\sum_j|w_j|\bigr)^2/\sum_j w_j^2$ over incidence magnitudes
-$w_j=|c_j(t)|$ (the effective number of sources with sizeable target incidence);\quad
+participation ratio $\mathrm{PR}=\bigl(\sum_j|c_j(t)|\bigr)^2/\sum_j c_j(t)^2$ over the target incidences
+(the effective number of sources with sizeable target incidence);\quad
 multiplicity $\mu_t=\#\{j:\arg\max_v c_j(v)=t\}$ (unanimity; with a tie-broken argmax it can count a
 source that ties $t$ and so does not satisfy $\{j\}\vdash t$);\quad
 ambiguity $\eta^2$ (between/total variance of candidate firing on the lowest-margin slice).
@@ -373,7 +378,7 @@ The proved results split into a \emph{frame side} (how many tokens a geometry ca
 This split is not a coincidence: it is the \emph{two arities} of the decode polynomial $Z_T$ of
 Definition~\ref{def:agg}. A $(\oplus,\otimes)$ polynomial has a monomial-count and a variable-rank, and
 PIC bounds each---the frame side bounds the \textbf{monomials} (tokens that can be cleanly decoded, the
-$\oplus$-arity) at $(1+2\rho/\gamma)^d$, the generator side bounds the \textbf{variables} (independent
+$\oplus$-arity) at $(1+2\umax/\gamma)^d$, the generator side bounds the \textbf{variables} (independent
 sources, the $\otimes$-arity) at $\min(M,d)$. ``Two-sided packing'' is thus a simultaneous bound on a
 polynomial's monomial-count and its variable-rank. Welch is the interference floor on \emph{both} sides.
 The readouts are overpacked too: $n_p\gg d$, so $\mathrm{FP}(U)\ge W>0$ and the unembedding frame is in
@@ -397,11 +402,11 @@ gives the bound. (Machine-checked in \texttt{DecodeCapacity.thy}.)
 \end{proof}
 
 \begin{corollary}[Head capacity]\label{cor:cap}
-\textup{(i)} \proved{} Any set $S$ of $\gamma$-decodable tokens is a $\gamma$-code:
-$\lVert U_v-U_w\rVert\ge\gamma$ for distinct $v,w\in S$ (\texttt{head\_capacity}).
-\textup{(ii)} Hence, by the classical volume-packing argument, $|S|\le(1+2\rho/\gamma)^d$ with
-$\rho=\max_v\lVert U_v\rVert$. The argument: disjoint radius-$\gamma/2$ balls about the points of $S$ fit
-inside the ball of radius $\rho+\gamma/2$.
+\textup{(i)} \proved{} Any set $V'\subseteq V$ of $\gamma$-decodable tokens is a $\gamma$-code:
+$\lVert U_v-U_w\rVert\ge\gamma$ for distinct $v,w\in V'$ (\texttt{head\_capacity}).
+\textup{(ii)} Hence, by the classical volume-packing argument, $|V'|\le(1+2\umax/\gamma)^d$ with
+$\umax=\max_v\lVert U_v\rVert$. The argument: disjoint radius-$\gamma/2$ balls about the points of $V'$
+fit inside the ball of radius $\umax+\gamma/2$.
 \end{corollary}
 
 \noindent Only part (i) is kernel-checked. The cardinality bound (ii) is a standard textbook step that the
@@ -412,10 +417,10 @@ looseness shows the bound is not the constraint, not that frame geometry never c
 \subsection{Generator side: routing rank and Welch interference (variable rank)}
 
 $M$ rules write logit adjustments along fixed readout vectors $\{a_1,\dots,a_M\}$ through
-input-dependent gates $h_k(z)$.
+input-dependent gates $g_k(x)$.
 
 \begin{theorem}[Routing superposition \proved{}]\label{thm:rank}
-$\sum_{i\in I}h_i\,a_i\in\operatorname{span}(a_I)$ and $\dim\operatorname{span}(a_I)\le|I|$. Every rule
+$\sum_{i\in I}g_i\,a_i\in\operatorname{span}(a_I)$ and $\dim\operatorname{span}(a_I)\le|I|$. Every rule
 adjustment lives in a subspace of dimension $\le\min(M,d)$; superposition is forced when the number of
 routing decisions exceeds $M$.
 \end{theorem}
@@ -434,12 +439,12 @@ implication is measured and mild, not proved.
 
 \subsection{The decode certificate and its robustness}
 
-With $\operatorname{decode}(L,S)=\max_{v\in S}L(v)$:
+With $\operatorname{decode}(L,V')=\max_{v\in V'}L(v)$ for a token set $V'\subseteq V$:
 
 \begin{theorem}[Head/tail certificate \proved{}]\label{thm:headtail}
-$\operatorname{decode}(L,H\cup T)=\max(\operatorname{decode}(L,H),\operatorname{decode}(L,T))$, and if
-$\operatorname{decode}(L,T)\le\operatorname{decode}(L,H)$ then the full decode equals the head decode and
-its argmax lies in $H$. If instead the head does not dominate, the decision lies in the tail---the
+$\operatorname{decode}(L,\Vh\cup\Vt)=\max(\operatorname{decode}(L,\Vh),\operatorname{decode}(L,\Vt))$, and if
+$\operatorname{decode}(L,\Vt)\le\operatorname{decode}(L,\Vh)$ then the full decode equals the head decode and
+its argmax lies in $\Vh$. If instead the head does not dominate, the decision lies in the tail---the
 explicit, uncertified residue.
 \end{theorem}
 
@@ -449,14 +454,14 @@ The constant $2\delta$ is tight (a $m(t)=2\delta$ token can be tied by a $\delta
 certificate is silent for $m(t)\le2\delta$---exactly the small-margin residue.
 \end{theorem}
 
-\noindent Note what Theorem~\ref{thm:headtail} partitions: \emph{tokens} ($H,T\subseteq V$), i.e.\ the
+\noindent Note what Theorem~\ref{thm:headtail} partitions: \emph{tokens} ($\Vh,\Vt\subseteq V$), i.e.\ the
 monomials of $Z_0$. The empirical sparse-circuit finding is about something else: a per-position head of
 a few late-layer \emph{blocks} reproduces the decode \empirical{}. That finding partitions \emph{sources}
-and needs Theorem~\ref{thm:margin} instead. Split $S=H_s\sqcup T_s$, and let
-$L_{H}(v)=\llbracket H_s\rrbracket(v)+b_v$ be the head-only logit. Suppose the tail's contribution is
-within $\delta$ of a common offset $c$ on every candidate, $|\llbracket T_s\rrbracket(v)-c|\le\delta$.
-Then $L=L_H+\llbracket T_s\rrbracket$ is a $\delta$-perturbation of $L_H+c$, which has the same argmax
-and the same margins as $L_H$. So if the head's margin exceeds $2\delta$, its decision is the model's.
+and needs Theorem~\ref{thm:margin} instead. Split $S=\Sh\sqcup\St$, and let
+$L_{\mathrm{head}}(v)=\llbracket\Sh\rrbracket(v)+b_v$ be the head-only logit. Suppose the tail's contribution
+is within $\delta$ of a common offset $\kappa$ on every candidate, $|\llbracket\St\rrbracket(v)-\kappa|\le\delta$.
+Then $L=L_{\mathrm{head}}+\llbracket\St\rrbracket$ is a $\delta$-perturbation of $L_{\mathrm{head}}+\kappa$,
+which has the same argmax and the same margins as $L_{\mathrm{head}}$. So if the head's margin exceeds $2\delta$, its decision is the model's.
 This is an immediate instance of Theorem~\ref{thm:margin}, not separately kernel-checked. Tokens whose head
 margin is $\le2\delta$ are the source-side residue.
 
@@ -535,8 +540,8 @@ semantics: overlapping explanations share facts, and summing them double-counts.
 extra machinery for this, which PIC does not supply. PIC's one native move is that the fact weights are
 \emph{derived from geometry}, $j\triangleright v=\inner{d_j}{U_v}$, rather than given.
 
-Demand closure, $\operatorname{lfp}(\operatorname{restrict}\,T\,D)=\operatorname{lfp}T\cap D$ for a
-monotone, demand-closed consequence operator, is proved \proved{} (\texttt{PIC\_Logic.thy},
+Demand closure, $\operatorname{lfp}(\operatorname{restrict}\,\mathcal T\,D)=\operatorname{lfp}\mathcal T\cap D$ for a
+monotone, demand-closed consequence operator $\mathcal T$, is proved \proved{} (\texttt{PIC\_Logic.thy},
 \texttt{demand\_restrict\_lfp}; also \texttt{ProvableOpt\_Common.thy}). It gives the soundness of the
 magic-sets/demand optimization for any stratum whose operator is a monotone set operator on atoms. That
 includes the layer program, where values ride as atom arguments. The \texttt{sum}/\texttt{max} aggregates of
@@ -571,7 +576,7 @@ Qwen raw-PR artifact---Qwen's raw PR is flat $7.7\text{--}13.8$ to 72B, while Py
 genuine but modest \emph{within-model} effect survives (higher-entropy tokens use somewhat more blocks;
 Spearman $\approx0.2\text{--}0.47$ in capable models)---a second-order grain, not the cross-model driver.
 The same architecture split shows up in a \emph{wholly independent, causal} probe---the convergence depth
-$k^\star/L$ (the smallest layer prefix whose recompute already reproduces the decode), which declines with
+$k^\star/n_\ell$ (the smallest layer prefix whose recompute already reproduces the decode), which declines with
 scale in Pythia but not Qwen (Figure~\ref{fig:arch}B)---so it is a property of the models, not an artifact
 of the attribution measure. So $r_{\mathrm{eff}}$ is capacity-associated rather than entropy-bound, with
 \emph{no universal law} across architectures; its functional form is \open{}. We keep it as the sharpest example of the discipline the
@@ -585,9 +590,9 @@ architecture split---rather than by what would have been tidy.
   Pythia from Qwen. \textbf{(A)} \emph{Attribution}: the effective number of decode blocks
   $r_{\mathrm{eff}}$ across the $\tau^\star$ sweep (14m--72B, reconstruction $1.00$): within Pythia it
   grows ($\approx0.5\,n_b$), within Qwen it is flat ($\sim$11--17) as the block fraction shrinks to
-  $0.10$. \textbf{(B)} \emph{Causal}: the convergence depth $k^\star/L$ (\texttt{--converge-depth}) ---
+  $0.10$. \textbf{(B)} \emph{Causal}: the convergence depth $k^\star/n_\ell$ (\texttt{--converge-depth}) ---
   the smallest layer prefix whose recompute reproduces the decode. Deep computation is the norm
-  ($k^\star/L\geq0.8$); Pythia's fraction declines with scale while Qwen's does not. That two unrelated
+  ($k^\star/n_\ell\geq0.8$); Pythia's fraction declines with scale while Qwen's does not. That two unrelated
   measures --- one attributional, one causal --- agree on the architecture split is the load-bearing
   point: there is no universal scaling law for decode engagement.}
   \label{fig:arch}

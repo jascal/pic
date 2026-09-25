@@ -31,12 +31,14 @@ decide(T)     :- logit(T, S), S = max S2 : { logit(_, S2) }.       // ⊕ = max 
 retrieved(T)  :- induction_copy(T).        // the induction macro: copy the token after the matched prefix (NOT itself recursive)
 ```
 
-Everything below is the formal reading of *this*. The mapping to PIC (`PIC_SPEC.md`):
+Everything below is the formal reading of *this*. (In the Soufflé snippets `T`, `S`, `W` are Datalog
+variables for a token, a score and a weight, as emitted. They are not the temperature `T`, the source set
+`S` or the Welch floor `W`.) The mapping to PIC (`PIC_SPEC.md`):
 
 | PIC-LP | PIC | semiring role |
 |--------|-----|---------------|
-| fact `contrib(b, t, w)` | incidence `b ▷ t = ⟨d_b, U_t⟩` valued in `R_T` | the atoms' weights |
-| `logit(T,S) :- …S = sum W…` | the `⊗`-monomial `L(t) = ⊗_b (b ▷ t)` | **`⊗` aggregates a body** |
+| fact `contrib(j, t, w)` | incidence `j ▷ t = ⟨d_j, U_t⟩` valued in `R_T` | the atoms' weights |
+| `logit(T,S) :- …S = sum W…` | the `⊗`-monomial `L(t) = ⊗_j (j ▷ t)` | **`⊗` aggregates a body** |
 | `decide(T) :- …S = max S2…` | the decode `⊤ = ⊕_T`-argmax over tokens | **`⊕_T` aggregates alternatives** |
 | `retrieved`, `induction_copy` | the induction macro (induction head) | a non-recursive clause; recursion only via the autoregressive loop (§4) |
 
@@ -46,23 +48,23 @@ So the database-style `sum`/`max` aggregates in the emitted Soufflé are **liter
 ## 2. Syntax
 
 - **Atoms / relations.** A finite signature of relations; an *atom* is a ground relation instance.
-  `contrib(b,t,w)`, `logit(t,s)`, `decide(t)`, `retrieved(t)`, `induction_copy(t)`, `ngram_succ(k,t)`.
-- **Facts (the EDB).** Ground atoms given for an input — here the `contrib(b,t,w)` rows, **produced by the
-  encoder** (§7): on input `x`, rule `b` fires with gate `g_b(x)` and contributes
-  `w = g_b(x)·⟨a_b, U_t⟩`. The EDB is input-dependent; the rules are not.
+  `contrib(j,t,w)`, `logit(t,s)`, `decide(t)`, `retrieved(t)`, `induction_copy(t)`, `ngram_succ(k,t)`.
+- **Facts (the EDB).** Ground atoms given for an input — here the `contrib(j,t,w)` rows, **produced by the
+  encoder** (§7): on input `x`, source `j` fires with gate `g_j(x)` and contributes
+  `w = g_j(x)·⟨a_j, U_t⟩`. The EDB is input-dependent; the rules are not.
 - **Clauses (the IDB rules).** `head ⟸ body₁, …, bodyₙ` with semiring aggregates in the body
-  (`sum`/`max`). The frame supplies the clause weights `⟨a_b, U_t⟩` (input-independent).
+  (`sum`/`max`). The frame supplies the clause weights `⟨a_j, U_t⟩` (input-independent).
 - **Program** `P` = facts ∪ clauses. **Query** = a relation to solve for — here `decide`.
 
 ## 3. Semantics
 
 Let `B` be the Herbrand base (all ground atoms). A program `P` induces an **immediate-consequence
-operator** `T_P : 𝒫(B) → 𝒫(B)`,
+operator** `𝒯_Π : 𝒫(B) → 𝒫(B)`,
 
-> `T_P(I) = I ∪ { head(c) : c ∈ P, body(c) ⊆ I }`,
+> `𝒯_Π(I) = I ∪ { head(r) : r ∈ Π, body(r) ⊆ I }`,
 
 which is **monotone** for plain Horn clauses, so by Knaster–Tarski it has a **least fixpoint**
-`lfp(T_P)`, the program's **least model**. This is the Boolean backbone that `PIC_Logic.thy` proves
+`lfp(𝒯_Π)`, the program's **least model**. This is the Boolean backbone that `PIC_Logic.thy` proves
 things about. **The emitted program is not plain Horn.** `logit` and `decide` use `sum`/`max` aggregates,
 which are not monotone set operators: adding a `contrib` fact can change a `sum`, and adding a `logit` can
 retract a `decide`. So its semantics is **stratified aggregation**: evaluate the aggregate-free strata to
@@ -84,7 +86,7 @@ Green–Karvounarakis–Tannen provenance with the carrier `R_T`. In the emitted
 answers, not over derivations of one answer. **Caveat:** `⊕_T` over alternative derivations is not
 ProbLog's possible-world semantics. Overlapping explanations share facts, and summing them double-counts.
 Algebraic ProbLog needs extra machinery (knowledge compilation) for this, and PIC-LP does not supply it. PIC's one native move: the fact weights
-are **not given but derived from geometry**, `b ▷ t = ⟨d_b, U_t⟩`. The two emitted aggregates are exactly
+are **not given but derived from geometry**, `j ▷ t = ⟨d_j, U_t⟩`. The two emitted aggregates are exactly
 the two semiring operations:
 - `logit(T,S) :- … S = sum W : {contrib(_,T,W)}` — the body is a `⊗`-product (`= +` in the log domain).
 - `decide(T) :- … S = max S2 : {logit(_,S2)}` — alternatives merge by `⊕_T` (`max` at `T → 0`).
@@ -109,7 +111,7 @@ has a genuinely `T`-dependent answer.
 ## 4. Where the recursion comes from
 
 A single forward pass is **stratified** (acyclic): `contrib` → `logit` → `decide` are layered, so
-`lfp(T_P)` is reached by finite bottom-up iteration — Datalog with no real recursion. The genuine
+`lfp(𝒯_Π)` is reached by finite bottom-up iteration — Datalog with no real recursion. The genuine
 recursion has two sources, both already in the emitted program / the program's structure:
 1. **The autoregressive loop** — around the induction macro `retrieved(T) :- induction_copy(T)` (copy
    the token after the matched prefix). The clause **is not itself recursive**: `retrieved` never occurs
@@ -140,10 +142,10 @@ These are the language's metatheory, machine-checked, not asserted.
 ## 6. The three roles, in LP terms
 
 `PIC_SPEC.md` §4's encode → frame → decode sandwich is the LP pipeline:
-- **Encoder = the fact generator (EDB).** Input `x` fires gates `g_b(x)`, grounding the program to the
-  `contrib(b,t,·)` facts. `PIC_Core.encoder_slice_logit` *(proved)* is the statement that each input
+- **Encoder = the fact generator (EDB).** Input `x` fires gates `g_j(x)`, grounding the program to the
+  `contrib(j,t,·)` facts. `PIC_Core.encoder_slice_logit` *(proved)* is the statement that each input
   grounds the program to a `pic` model.
-- **Frame = the clause weights (the program proper).** The fixed rule incidences `⟨a_b, U_t⟩` are the
+- **Frame = the clause weights (the program proper).** The fixed rule incidences `⟨a_j, U_t⟩` are the
   input-independent clauses — the *program*, not the data.
 - **Decode = the query.** `decide` over the candidate propositions.
 
@@ -152,12 +154,12 @@ fires) + *decode-side* query.
 
 ## 7. Worked reading of the emitted program
 
-For one decision with candidates `{t₀, t₁}` and blocks `{b₁, b₂}`, the encoder grounds
-`contrib(b₁,t₀,w₁₀), contrib(b₂,t₀,w₂₀), contrib(b₁,t₁,w₁₁), contrib(b₂,t₁,w₁₁)`. Then
+For one decision with candidates `{t₀, t₁}` and blocks `{j₁, j₂}`, the encoder grounds
+`contrib(j₁,t₀,w₁₀), contrib(j₂,t₀,w₂₀), contrib(j₁,t₁,w₁₁), contrib(j₂,t₁,w₂₁)`. Then
 `logit(t,·)` fires `⊗` (`w₁ₜ + w₂ₜ`), `decide` fires `⊕_T` (`max` at `T=0`) → `decide(t*)` for
 `t* = argmax`. If `induction_copy(t₁)` holds (an induction head matched), the macro clause adds
 `retrieved(t₁)` regardless of the numeric margin — the *macro* fires structurally. The answer
-`lfp(T_P) ⊇ {decide(t*), retrieved(t₁)}` is the program's least model; the same `decide(t*)` for every
+`lfp(𝒯_Π) ⊇ {decide(t*), retrieved(t₁)}` is the program's least model; the same `decide(t*)` for every
 `T`, with the provenance weight (margin / softmax mass) the only `T`-dependent annotation.
 
 ## 7.5 A grammar surface (DCG-style)?
@@ -186,13 +188,13 @@ Grammar surface make the recursive PIC-LP rules readable?
 
 ## 8. Status
 
-- **proved** (i-orca, `PIC_Logic.thy` + `PIC_Forward.thy`): the `T_P`/least-model semantics
+- **proved** (i-orca, `PIC_Logic.thy` + `PIC_Forward.thy`): the `𝒯_Π`/least-model semantics
   (`Tp`/`answer`); the magic-sets/demand-closure soundness (`demand_restrict_lfp`, + the decidable
   rule-level criterion `demand_closed_TpI`); the margin (clause-weight) certificate, threshold-tight
   (`decode_margin_certified`); unbounded recursion in the lfp (`reach_all`); the `μ_t=0 ≠ irreducible`
   gap (`PIC_Core`/`Separation`); each input grounds the program to a model
   (`PIC_Core.encoder_slice_logit`); **and the forward pass IS the least fixpoint** —
-  `lfp_is_trajectory`: `answer(Player) = {(ℓ, Rℓ) | ℓ}` exactly, so `lfp(T_P)` of the full layer
+  `lfp_is_trajectory`: `answer(Player) = {(ℓ, Rℓ) | ℓ}` exactly, so `lfp(𝒯_Π)` of the full layer
   program equals the forward residual stack and the decode reads its final layer (`lfp_decode_logits`).
 - **empirical** (fieldrun): the emitted program reproduces the model decode (`export --logic`, run in
   Soufflé) at the measured positions; the induction rule is measured as a (non-recursive) macro clause.
@@ -203,5 +205,5 @@ Grammar surface make the recursive PIC-LP rules readable?
 ---
 
 *Next build targets (the surface): a thin `pic`-LP surface syntax so `fieldrun export --logic`
-round-trips through the formal `T_P`/`lfp` semantics; and the DCG-style grammar layer (§7.5) for the
+round-trips through the formal `𝒯_Π`/`lfp` semantics; and the DCG-style grammar layer (§7.5) for the
 recursive fragment, compiling to position-indexed clauses.*
