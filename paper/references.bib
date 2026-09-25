@@ -1,17 +1,22 @@
-@article{green2007provenance,
+% --- semirings, provenance, tropical / idempotent mathematics -------------------------------------
+
+@inproceedings{green2007provenance,
   title     = {Provenance semirings},
   author    = {Green, Todd J. and Karvounarakis, Grigoris and Tannen, Val},
-  journal   = {Proceedings of the 26th ACM SIGMOD-SIGACT-SIGART Symposium on Principles of Database Systems (PODS)},
+  booktitle = {Proceedings of the 26th ACM SIGMOD-SIGACT-SIGART Symposium on Principles of Database Systems (PODS)},
   pages     = {31--40},
   year      = {2007}
 }
 
-@article{maslov1992dequantization,
-  title     = {Idempotent analysis and its applications},
-  author    = {Litvinov, G. L. and Maslov, V. P.},
-  journal   = {Mathematical Notes / Idempotent Mathematics},
-  year      = {1992},
-  note      = {Maslov dequantization: the $T\to0$ deformation of the log-semiring to the tropical (max-plus) semiring}
+@article{litvinov2007maslov,
+  title     = {Maslov dequantization, idempotent and tropical mathematics: A brief introduction},
+  author    = {Litvinov, G. L.},
+  journal   = {Journal of Mathematical Sciences},
+  volume    = {140},
+  number    = {3},
+  pages     = {426--444},
+  year      = {2007},
+  note      = {arXiv:math/0507014}
 }
 
 @book{maclagan2015tropical,
@@ -23,12 +28,17 @@
   year      = {2015}
 }
 
-@article{zhang2018tropical,
+@inproceedings{zhang2018tropical,
   title     = {Tropical geometry of deep neural networks},
   author    = {Zhang, Liwen and Naitzat, Gregory and Lim, Lek-Heng},
-  journal   = {Proceedings of the 35th International Conference on Machine Learning (ICML)},
+  booktitle = {Proceedings of the 35th International Conference on Machine Learning (ICML)},
+  series    = {PMLR},
+  volume    = {80},
+  pages     = {5824--5832},
   year      = {2018}
 }
+
+% --- frames, coherence, packing, power diagrams ----------------------------------------------------
 
 @article{welch1974lower,
   title     = {Lower bounds on the maximum cross correlation of signals},
@@ -38,6 +48,33 @@
   number    = {3},
   pages     = {397--399},
   year      = {1974}
+}
+
+@article{benedetto2003finite,
+  title     = {Finite normalized tight frames},
+  author    = {Benedetto, John J. and Fickus, Matthew},
+  journal   = {Advances in Computational Mathematics},
+  volume    = {18},
+  number    = {2--4},
+  pages     = {357--385},
+  year      = {2003}
+}
+
+@article{strohmer2003grassmannian,
+  title     = {Grassmannian frames with applications to coding and communication},
+  author    = {Strohmer, Thomas and Heath, Jr., Robert W.},
+  journal   = {Applied and Computational Harmonic Analysis},
+  volume    = {14},
+  number    = {3},
+  pages     = {257--275},
+  year      = {2003}
+}
+
+@book{vershynin2018high,
+  title     = {High-Dimensional Probability: An Introduction with Applications in Data Science},
+  author    = {Vershynin, Roman},
+  publisher = {Cambridge University Press},
+  year      = {2018}
 }
 
 @article{aurenhammer1987power,
@@ -50,32 +87,130 @@
   year      = {1987}
 }
 
-@article{elhage2022superposition,
-  title     = {Toy Models of Superposition},
-  author    = {Elhage, Nelson and others},
-  journal   = {Transformer Circuits Thread},
-  year      = {2022}
+% --- logic programming, Datalog --------------------------------------------------------------------
+
+@article{vanemden1976semantics,
+  title     = {The semantics of predicate logic as a programming language},
+  author    = {van Emden, Maarten H. and Kowalski, Robert A.},
+  journal   = {Journal of the ACM},
+  volume    = {23},
+  number    = {4},
+  pages     = {733--742},
+  year      = {1976}
 }
+
+@article{tarski1955lattice,
+  title     = {A lattice-theoretical fixpoint theorem and its applications},
+  author    = {Tarski, Alfred},
+  journal   = {Pacific Journal of Mathematics},
+  volume    = {5},
+  number    = {2},
+  pages     = {285--309},
+  year      = {1955}
+}
+
+@incollection{apt1988towards,
+  title     = {Towards a theory of declarative knowledge},
+  author    = {Apt, Krzysztof R. and Blair, Howard A. and Walker, Adrian},
+  booktitle = {Foundations of Deductive Databases and Logic Programming},
+  editor    = {Minker, Jack},
+  publisher = {Morgan Kaufmann},
+  pages     = {89--148},
+  year      = {1988}
+}
+
+@inproceedings{bancilhon1986magic,
+  title     = {Magic sets and other strange ways to implement logic programs},
+  author    = {Bancilhon, Fran\c{c}ois and Maier, David and Sagiv, Yehoshua and Ullman, Jeffrey D.},
+  booktitle = {Proceedings of the 5th ACM SIGACT-SIGMOD Symposium on Principles of Database Systems (PODS)},
+  pages     = {1--15},
+  year      = {1986}
+}
+
+@inproceedings{deraedt2007problog,
+  title     = {{ProbLog}: A probabilistic {Prolog} and its application in link discovery},
+  author    = {De Raedt, Luc and Kimmig, Angelika and Toivonen, Hannu},
+  booktitle = {Proceedings of the 20th International Joint Conference on Artificial Intelligence (IJCAI)},
+  pages     = {2462--2467},
+  year      = {2007}
+}
+
+@inproceedings{kimmig2011algebraic,
+  title     = {An algebraic {Prolog} for reasoning about possible worlds},
+  author    = {Kimmig, Angelika and Van den Broeck, Guy and De Raedt, Luc},
+  booktitle = {Proceedings of the 25th AAAI Conference on Artificial Intelligence},
+  pages     = {209--214},
+  year      = {2011}
+}
+
+@inproceedings{jordan2016souffle,
+  title     = {Souffl\'{e}: On synthesis of program analyzers},
+  author    = {Jordan, Herbert and Scholz, Bernhard and Suboti\'{c}, Pavle},
+  booktitle = {Computer Aided Verification (CAV)},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {9780},
+  pages     = {422--430},
+  publisher = {Springer},
+  year      = {2016}
+}
+
+% --- proof assistant -------------------------------------------------------------------------------
+
+@book{nipkow2002isabelle,
+  title     = {{Isabelle/HOL}: A Proof Assistant for Higher-Order Logic},
+  author    = {Nipkow, Tobias and Paulson, Lawrence C. and Wenzel, Markus},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {2283},
+  publisher = {Springer},
+  year      = {2002}
+}
+
+% --- transformers, interpretability, models measured -----------------------------------------------
 
 @article{elhage2021mathematical,
   title     = {A Mathematical Framework for Transformer Circuits},
   author    = {Elhage, Nelson and others},
   journal   = {Transformer Circuits Thread},
-  year      = {2021}
+  year      = {2021},
+  note      = {\url{https://transformer-circuits.pub/2021/framework/}}
 }
 
-@article{nanda2023progress,
-  title     = {Progress measures for grokking via mechanistic interpretability},
-  author    = {Nanda, Neel and Chan, Lawrence and Lieberum, Tom and Smith, Jess and Steinhardt, Jacob},
-  journal   = {International Conference on Learning Representations (ICLR)},
+@article{elhage2022superposition,
+  title     = {Toy Models of Superposition},
+  author    = {Elhage, Nelson and others},
+  journal   = {Transformer Circuits Thread},
+  year      = {2022},
+  note      = {\url{https://transformer-circuits.pub/2022/toy_model/}}
+}
+
+@article{ba2016layer,
+  title     = {Layer normalization},
+  author    = {Ba, Jimmy Lei and Kiros, Jamie Ryan and Hinton, Geoffrey E.},
+  journal   = {arXiv preprint arXiv:1607.06450},
+  year      = {2016}
+}
+
+@inproceedings{zhang2019root,
+  title     = {Root mean square layer normalization},
+  author    = {Zhang, Biao and Sennrich, Rico},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  volume    = {32},
+  year      = {2019}
+}
+
+@inproceedings{biderman2023pythia,
+  title     = {Pythia: A suite for analyzing large language models across training and scaling},
+  author    = {Biderman, Stella and Schoelkopf, Hailey and Anthony, Quentin and Bradley, Herbie and O'Brien, Kyle and Hallahan, Eric and Khan, Mohammad Aflah and Purohit, Shivanshu and Prashanth, USVSN Sai and Raff, Edward and Skowron, Aviya and Sutawika, Lintang and van der Wal, Oskar},
+  booktitle = {Proceedings of the 40th International Conference on Machine Learning (ICML)},
+  series    = {PMLR},
+  volume    = {202},
+  pages     = {2397--2430},
   year      = {2023}
 }
 
-@misc{paulson1994isabelle,
-  title        = {Isabelle: A Generic Theorem Prover},
-  author       = {Paulson, Lawrence C.},
-  series       = {Lecture Notes in Computer Science},
-  volume       = {828},
-  publisher    = {Springer},
-  year         = {1994}
+@article{qwen2024qwen25,
+  title     = {Qwen2.5 Technical Report},
+  author    = {{Qwen Team}},
+  journal   = {arXiv preprint arXiv:2412.15115},
+  year      = {2024}
 }

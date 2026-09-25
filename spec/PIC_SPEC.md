@@ -1,8 +1,12 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.1). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.2). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.2 (2026-09-25)** — definitions only. `η²_k` is defined as pil computes it (§4.1). The `δ` in (S2)
+> is the per-step bound `r_max·ε_U + ε_b`, and step decision preservation cites i-orca `PIC_Learn.thy`
+> *(proved)*. The monotonicity in (S2) stays unproved.
+>
 > **v0.3.1 (2026-09-25)** — notation only; no claims changed. Each symbol now has one meaning (§8):
 > head/tail sets `V_head`/`V_tail` (tokens) and `S_head`/`S_tail` (sources), not `H`/`T`; `u_max` for
 > `max‖U_v‖`, not `ρ`; token subsets `V′`, not `S`; layer count `n_ℓ`, not `L`; residual space `ℋ`, not
@@ -409,7 +413,7 @@ PIC *is* a sandwich — there are **three** roles, not two, and the frame is the
 | **margin** `m(t)` | `L(t) − max_{v≠t} L(v)` (top-1 vs top-2, or target-vs-worst) | `geometry.py:margin_to_worst`; `recursion_probe.rs` (`logits[0]−logits[1]`) |
 | **participation ratio** `PR` | `(Σ_j |c_j(t)|)² / Σ_j c_j(t)²` over the target incidences | `geometry.py:participation_ratio` |
 | **multiplicity** `μ_t` | `#{ j : argmax_v c_j(v) = t }` — sources whose *own* argmax is the target | `recursion_probe.rs:run_source_pr_dump` |
-| **ambiguity** `η²` | between-class / total variance of candidate firing on the lowest-margin slice | `scoring.py:ambiguity_resolution_score` |
+| **ambiguity** `η²_k` | for candidate rule `k`: on the fraction `frac` (default 0.3) of contexts with the smallest current margin, the correlation ratio `SS_between / SS_total` of `k`'s activation grouped by target label (the variance share explained by which token is the target) | `scoring.py:ambiguity_resolution_score` |
 
 `PR` is the **effective number of sources with sizeable incidence on the target**, under the chosen
 decomposition. It is **not** a measure of sufficient-coalition size, and both tempting readings fail:
@@ -648,7 +652,12 @@ soundness theorems):
 - *(S1) decode soundness* — after refinement the frame still satisfies the recovered-probability
   property in the log-semiring on the held set (PIC stays a model of a valid decoder).
 - *(S2) margin monotonicity* — refinement does not *decrease* the certified margin mass (`#{t : margin
-  > 2δ}` of §5.5).
+  > 2δ}` of §5.5). **`δ` is the per-step logit perturbation bound.** If a step moves each frame vector by
+  at most `ε_U` and each bias by at most `ε_b`, and every tracked residual has `‖r‖ ≤ r_max`, then
+  `δ = r_max·ε_U + ε_b`. That the step preserves every decision with margin `> 2δ` is *proved*
+  (i-orca `pic_learn/PIC_Learn.thy`, `step_decode_preserved`; the trajectory form
+  `traj_decode_preserved` uses the budget `2·Σ_s δ_s < m`). pil measures these premises on real optimizer
+  steps (`pil/certify.py`). The *monotonicity* of the certified mass is **not** proved.
 - *(S3) frame admissibility* — `FP(U) ≥ W` is structural (Welch), so the loop targets `FP/W → 1` and
   must not be reported as having beaten the floor.
 
@@ -834,10 +843,11 @@ covers the §5 theorem set except the quantitative Welch floor (`Welch.thy`) and
 | `m(t)` | margin `L(t) − max_{v≠t} L(v)` |
 | `PR` | participation ratio `(Σ_j|c_j(t)|)²/Σ_j c_j(t)²` (participation under a fixed decomposition, §4.1) |
 | `μ_t` | multiplicity: # sources whose own argmax is `t` |
-| `η²` | ambiguity (between/total variance on low-margin slice) |
+| `η²_k` | ambiguity of candidate rule `k` (correlation ratio on the low-margin slice, §4.1) |
 | `FP`, `W` | frame potential; Welch floor `(nₚ−d)/(d(nₚ−1))` |
 | `γ`, `u_max`, `M`, `n` | decode margin; `max_v‖U_v‖`; #rules; #routing decisions |
-| `δ`, `2δ` | per-token perturbation bound; tight margin-certificate threshold |
+| `δ`, `2δ` | per-token logit perturbation bound (`= r_max·ε_U + ε_b` for a frame step, §6); tight margin-certificate threshold |
+| `ε_U`, `ε_b`, `r_max` | per-step bounds on frame and bias movement; residual-norm bound (§6) |
 | `V′`, `V_head`, `V_tail` | a token subset; head/tail token sets (§5.4) |
 | `S_head`, `S_tail`, `κ` | head/tail source sets; common tail offset (§5.4) |
 | `P`, `A` | coalition `⊆ S`; the available sources in a decode interpretation (§6.5) |

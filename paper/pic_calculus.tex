@@ -38,7 +38,7 @@
 \large A semiring-weighted incidence algebra for the transformer decode,\\
 its frozen-model geometry, and its learnable frame}
 \author{}
-\date{Draft --- companion to \texttt{spec/PIC\_SPEC.md} v0.3.1}
+\date{Draft --- companion to \texttt{spec/PIC\_SPEC.md} v0.3.2}
 
 \begin{document}
 \maketitle
@@ -65,7 +65,7 @@ learning problem as frame optimization under explicit soundness invariants.
 \section{Introduction}
 
 A transformer computes a next-token distribution by projecting a residual vector onto an unembedding
-matrix and taking a softmax. Read literally this is a single linear map followed by a normalization; but
+matrix and taking a softmax~\cite{elhage2021mathematical}. Read literally this is a single linear map followed by a normalization; but
 the residual vector is itself an \emph{additive} object---a sum of per-layer attention and MLP writes
 plus the embedding---so the decode logit of token $v$ decomposes as a \emph{sum of inner products}, one
 per contributing block. We take this decomposition as primitive and ask what algebra it lives in. The
@@ -78,7 +78,7 @@ final normalization folded into the sources the decomposition is algebraically e
 runtime reproduces the model's decode decision at every position measured (\S\ref{sec:calculus}).
 \emph{Verification} is proving structural bounds---how many tokens a frame can decode, how many rules can
 write the logits, what interference overpacking forces---and these are theorems about the calculus's
-structures, machine-checked in a kernel. \emph{Learning} is the recognition that the frame is a free
+structures, machine-checked in a kernel~\cite{nipkow2002isabelle}. \emph{Learning} is the recognition that the frame is a free
 parameter: one can hold the decode semantics fixed and deform the geometry so that more structure becomes
 retrievable. PIC is the shared vocabulary that lets a definition in one activity be a hypothesis in
 another.
@@ -136,19 +136,19 @@ while \emph{$\oplus_T$ combines tokens}, giving the decode \emph{polynomial}
 \end{definition}
 
 Thus each token is a monomial and the decode is a $(\oplus_T,\otimes)$ polynomial whose monomials are the
-tokens and whose variables are the sources---the tropical-polynomial picture of a ReLU network. The
+tokens and whose variables are the sources---the tropical-polynomial picture of a ReLU network~\cite{zhang2018tropical,maclagan2015tropical}. The
 decision reads off $Z_T$: at $T\to0$, $Z_0=\max_v L(v)$ and the decode is $\arg\max_v L(v)$; at $T=1$,
 $Z_1=\operatorname{logsumexp}_v L(v)$ and $p(v)=\exp(L(v)-Z_1)$. The monomials are shared across $T$; only
 $\oplus_T$ changes (Lemma~\ref{lem:tinv}).
 
-In the transformer instance, the sources are the \emph{DLA blocks}: an $n_\ell$-layer model has $n_b=2n_\ell+1$
+In the transformer instance, the sources are the \emph{direct-logit-attribution (DLA) blocks}~\cite{elhage2021mathematical}: an $n_\ell$-layer model has $n_b=2n_\ell+1$
 blocks (one attention and one MLP/expert write per layer, plus the embedding), and $d_j$ is block $j$'s
 additive contribution to the residual at the decode position. The incidence $c_j(v)=\inner{d_j}{U_v}$ is
 precisely the per-block contribution a decomposing runtime emits, and its source-sum reconstructs the
 model's decode logit.
 
-\paragraph{Native notation.} PIC borrows its carriers (semiring, Gram kernel, Welch bound, power
-diagrams) so as to inherit their theorems, but three things are native and get their own notation. The
+\paragraph{Native notation.} PIC borrows its carriers (semiring~\cite{green2007provenance}, Gram kernel,
+Welch bound~\cite{welch1974lower}, power diagrams~\cite{aurenhammer1987power}) so as to inherit their theorems, but three things are native and get their own notation. The
 \emph{incidence arrow} $j\triangleright v:=\inner{d_j}{U_v}$ names the one new primitive---provenance as
 an inner product in a learnable frame. The \emph{coalition bracket}
 $\llbracket P\rrbracket(v):=\bigotimes_{j\in P}(j\triangleright v)$ is the partial monomial of a coalition
@@ -198,7 +198,7 @@ general & deformed & $T\log\sum e^{\cdot/T}$ & temperature-controlled decoding \
 \end{tabular}
 \end{center}
 
-The two ends are joined by \emph{Maslov dequantization}: the probabilistic calculus (the model in
+The two ends are joined by \emph{Maslov dequantization}~\cite{litvinov2007maslov}: the probabilistic calculus (the model in
 operation) and the geometric calculus (the proofs) are limits of one deformation, not different objects.
 
 \begin{definition}[The complete semiring]\label{def:semiring}
@@ -232,7 +232,7 @@ inside a proposition. As in Definition~\ref{def:agg}, $\oplus_T$ ranges over the
 propositions}, the alternative answers to the decode query. It does not range over alternative derivations of
 one $v$.
 
-\paragraph{Semantics.} Semiring annotation in the style of Green--Karvounarakis--Tannen: the annotation of
+\paragraph{Semantics.} Semiring annotation in the style of Green--Karvounarakis--Tannen~\cite{green2007provenance}: the annotation of
 $v$ is $L(v)\in R_T$. The Gram kernel supplies the continuous overlap that a Boolean annotation lacks.
 Because $v$ has a single derivation, its provenance polynomial is the single monomial $L(v)$. $\oplus_T$
 enters one level up, at the query, as the partition $Z_T=\bigoplus_{T,v}L(v)$. This is the log-partition
@@ -257,8 +257,8 @@ tropical sum. The turnstile is therefore a tropical side condition on annotation
 \begin{itemize}[nosep]
   \item \emph{Log-semiring $\Rightarrow$ transformer.} The sources are block writes with the final
         normalization \emph{folded in}. Let $s$ be the inverse scale, computed once from the full
-        pre-norm residual and frozen, and $\theta$ the learned gain. For RMSNorm, $\tilde d_j=s\,\theta\odot d_j$.
-        For LayerNorm, $\tilde d_j=s\,\theta\odot(d_j-\operatorname{mean}(d_j))+\mathbf 1_{j=\mathrm{embed}}\,\beta$:
+        pre-norm residual and frozen, and $\theta$ the learned gain. For RMSNorm~\cite{zhang2019root}, $\tilde d_j=s\,\theta\odot d_j$.
+        For LayerNorm~\cite{ba2016layer}, $\tilde d_j=s\,\theta\odot(d_j-\operatorname{mean}(d_j))+\mathbf 1_{j=\mathrm{embed}}\,\beta$:
         centring is per block (the means add up to the full-residual mean), and the norm bias $\beta$ is
         assigned by convention to the embedding block. Then $\sum_j\tilde d_j$ is the normed residual. Both
         conventions affect coalition attribution. Three claims must be kept apart.
@@ -276,7 +276,7 @@ tropical sum. The turnstile is therefore a tropical side condition on annotation
         With the norm scale and downstream blocks frozen, $\llbracket P\rrbracket$ for a proper coalition is
         a \emph{direct-effect} quantity, not the model's behaviour when $S\setminus P$ is ablated.
   \item \emph{Tropical $\Rightarrow$ power diagram.} As $T\to0$, $\arg\max_v \inner{r}{U_v}+b_v$ is
-        Laguerre (power-diagram) cell membership over sites $\{U_v\}$ with weights
+        Laguerre (power-diagram) cell membership~\cite{aurenhammer1987power} over sites $\{U_v\}$ with weights
         $\omega_v=\lVert U_v\rVert^2+2b_v$, under the convention
         $\arg\min_v\lVert r-U_v\rVert^2-\omega_v$. The capacity theorems of \S\ref{sec:thm} are the geometry
         of that diagram.
@@ -341,7 +341,11 @@ participation ratio $\mathrm{PR}=\bigl(\sum_j|c_j(t)|\bigr)^2/\sum_j c_j(t)^2$ o
 (the effective number of sources with sizeable target incidence);\quad
 multiplicity $\mu_t=\#\{j:\arg\max_v c_j(v)=t\}$ (unanimity; with a tie-broken argmax it can count a
 source that ties $t$ and so does not satisfy $\{j\}\vdash t$);\quad
-ambiguity $\eta^2$ (between/total variance of candidate firing on the lowest-margin slice).
+ambiguity $\eta^2_k$ of a candidate rule $k$: take the fraction (default $30\%$) of training contexts with
+the smallest current margin $m(t)$, and on them compute the correlation ratio of $k$'s activation with
+the target label, $\eta^2_k=\mathrm{SS}_{\mathrm{between}}/\mathrm{SS}_{\mathrm{total}}$. This is the share
+of the activation's variance explained by which token is the target. It is high when the rule's firing
+tracks exactly the decisions that are still near a tie.
 
 \begin{remark}[Architecture-fair PR]
 When sources carry a common-mode component identical across candidates (e.g.\ a LayerNorm/embedding
@@ -362,11 +366,11 @@ job.
 \paragraph{Frame-side.}
 Gram coherence $\max_{v\neq w}|\rho(v,w)|$;\quad
 frame potential $\mathrm{FP}=\operatorname{mean}_{v\neq w}\rho(v,w)^2$;\quad
-Welch floor $W=(n_p-d)/\bigl(d(n_p-1)\bigr)$ for $n_p>d$, else $0$. Always $\mathrm{FP}\ge W$. Because FP
+Welch floor $W=(n_p-d)/\bigl(d(n_p-1)\bigr)$ for $n_p>d$, else $0$~\cite{welch1974lower}. Always $\mathrm{FP}\ge W$. Because FP
 uses cosines, it depends only on the normalized directions $\bar U_v$, and its equality cases are
 statements about them. For $n_p>d$, $\mathrm{FP}=W$ iff $\{\bar U_v\}$ is a unit-norm tight frame
-(Benedetto--Fickus). Equiangularity is an additional condition: it is the equality case of the
-\emph{max}-coherence bound. For $n_p\le d$, $W=0$ and $\mathrm{FP}=0$ iff the directions are pairwise
+(Benedetto--Fickus~\cite{benedetto2003finite}). Equiangularity is an additional condition: it is the
+equality case of the \emph{max}-coherence bound~\cite{strohmer2003grassmannian}. For $n_p\le d$, $W=0$ and $\mathrm{FP}=0$ iff the directions are pairwise
 orthogonal, which does not require tightness on all of $\HH$. The ratio $\mathrm{FP}/W$ is defined only
 for $W>0$. These quantities depend on the
 frame representative (Remark~\ref{rem:gauge}).
@@ -382,7 +386,7 @@ $\oplus$-arity) at $(1+2\umax/\gamma)^d$, the generator side bounds the \textbf{
 sources, the $\otimes$-arity) at $\min(M,d)$. ``Two-sided packing'' is thus a simultaneous bound on a
 polynomial's monomial-count and its variable-rank. Welch is the interference floor on \emph{both} sides.
 The readouts are overpacked too: $n_p\gg d$, so $\mathrm{FP}(U)\ge W>0$ and the unembedding frame is in
-superposition. On the generator side, overpacking provably forces routing cross-talk
+superposition~\cite{elhage2022superposition}. On the generator side, overpacking provably forces routing cross-talk
 (Theorem~\ref{thm:welch}). On the frame side, the only proved capacity bound is astronomically loose for
 realistic $d$, so it is not what limits real models. A loose upper bound does not show that frame geometry
 is non-binding, however. Whether frame coherence limits achievable margins is the open
@@ -404,7 +408,7 @@ gives the bound. (Machine-checked in \texttt{DecodeCapacity.thy}.)
 \begin{corollary}[Head capacity]\label{cor:cap}
 \textup{(i)} \proved{} Any set $V'\subseteq V$ of $\gamma$-decodable tokens is a $\gamma$-code:
 $\lVert U_v-U_w\rVert\ge\gamma$ for distinct $v,w\in V'$ (\texttt{head\_capacity}).
-\textup{(ii)} Hence, by the classical volume-packing argument, $|V'|\le(1+2\umax/\gamma)^d$ with
+\textup{(ii)} Hence, by the classical volume-packing argument~\cite[\S4.2]{vershynin2018high}, $|V'|\le(1+2\umax/\gamma)^d$ with
 $\umax=\max_v\lVert U_v\rVert$. The argument: disjoint radius-$\gamma/2$ balls about the points of $V'$
 fit inside the ball of radius $\umax+\gamma/2$.
 \end{corollary}
@@ -499,7 +503,13 @@ $\mathcal{L}$.
 
 \paragraph{Soundness invariants.} The loop should preserve: (S1) \emph{decode soundness}---the refined
 frame still realizes a valid log-semiring decoder on held data; (S2) \emph{margin monotonicity}---the
-certified margin mass $\#\{t:m(t)>2\delta\}$ of Theorem~\ref{thm:margin} does not decrease; (S3)
+certified margin mass $\#\{t:m(t)>2\delta\}$ does not decrease. Here $\delta$ is the per-step logit
+perturbation bound: if a step moves each frame vector by at most $\varepsilon_U$ and each bias by at most
+$\varepsilon_b$, and every tracked residual has $\lVert r\rVert\le r_{\max}$, then
+$\delta=r_{\max}\varepsilon_U+\varepsilon_b$, and Theorem~\ref{thm:margin} applies with it. That a step
+preserves every decision with $m(t)>2\delta$ is proved \proved{} (\texttt{pic\_learn/PIC\_Learn.thy},
+\texttt{step\_decode\_preserved}, with the trajectory form \texttt{traj\_decode\_preserved}). The
+monotonicity of the certified mass in (S2) is not; (S3)
 \emph{frame admissibility}---$\mathrm{FP}(U)\ge W$ is structural, so a report must target $\mathrm{FP}/W\to1$
 and never claim to beat the floor. These are natural targets for learning-side soundness theorems.
 
@@ -517,7 +527,7 @@ two strata.
         $\mathrm{src}(j)$ weighted by $j\triangleright v$, and decision atoms $\mathrm{dec}(v)$. Let
         $A=\{j:\mathrm{src}(j)\in I\}$. The model's decision is the \emph{full}-coalition aggregate:
         $\mathrm{dec}(v)$ holds iff $A\vdash v$. Because $\vdash$ is strict, this derives at most one
-        decision atom, and none on a tie. The emitted program's \texttt{max}-aggregate \texttt{decide} is the
+        decision atom, and none on a tie. The emitted Souffl\'e~\cite{jordan2016souffle} program's \texttt{max}-aggregate \texttt{decide} is the
         argmax relation instead, which derives every maximizer. The two agree exactly under a
         unique-maximum precondition; otherwise a selection policy (such as the model's tie-break) must be
         stated. Sub-coalition
@@ -526,24 +536,26 @@ two strata.
         different tokens at once, so an existential rule
         ``$\exists P\subseteq A.\ P\vdash v\Rightarrow\mathrm{dec}(v)$'' would record witnesses, not the
         decode. No $\mathrm{dec}$ or $\mathrm{wit}$ atom occurs in a body. The stratum is evaluated once,
-        after the layer stratum (stratified aggregation), and is not a monotone Horn operator.
+        after the layer stratum (stratified aggregation~\cite{apt1988towards}), and is not a monotone Horn
+        operator~\cite{vanemden1976semantics}.
   \item \emph{The layer stratum is where recursion enters.} Its atoms $(\ell,x)$ say ``the residual at
         layer $\ell$ is $x$'', the embedding is a fact, and each layer is a clause
-        $(\ell{+}1,\mathrm{step}_\ell\,x)\Leftarrow(\ell,x)$. Its least model is exactly the forward
+        $(\ell{+}1,\mathrm{step}_\ell\,x)\Leftarrow(\ell,x)$. Its least model (the least fixpoint of a monotone
+        operator~\cite{tarski1955lattice,vanemden1976semantics}) is exactly the forward
         trajectory \proved{} (\texttt{PIC\_Forward.thy}, \texttt{lfp\_is\_trajectory}). The decode logits are
         the frame read-out of its final-layer fact \proved{} (\texttt{lfp\_decode\_logits}), and the
         decode stratum is evaluated on top.
 \end{itemize}
 The semiring chooses the aggregation: $T=0$ gives Viterbi/min-cost evaluation, $T=1$ gives logsumexp,
 and Boolean gives classical Datalog. Logsumexp over derivations is not by itself ProbLog's possible-world
-semantics: overlapping explanations share facts, and summing them double-counts. Algebraic ProbLog needs
-extra machinery for this, which PIC does not supply. PIC's one native move is that the fact weights are
+semantics~\cite{deraedt2007problog}: overlapping explanations share facts, and summing them double-counts.
+Algebraic ProbLog~\cite{kimmig2011algebraic} needs extra machinery for this, which PIC does not supply. PIC's one native move is that the fact weights are
 \emph{derived from geometry}, $j\triangleright v=\inner{d_j}{U_v}$, rather than given.
 
 Demand closure, $\operatorname{lfp}(\operatorname{restrict}\,\mathcal T\,D)=\operatorname{lfp}\mathcal T\cap D$ for a
 monotone, demand-closed consequence operator $\mathcal T$, is proved \proved{} (\texttt{PIC\_Logic.thy},
 \texttt{demand\_restrict\_lfp}; also \texttt{ProvableOpt\_Common.thy}). It gives the soundness of the
-magic-sets/demand optimization for any stratum whose operator is a monotone set operator on atoms. That
+magic-sets/demand optimization~\cite{bancilhon1986magic} for any stratum whose operator is a monotone set operator on atoms. That
 includes the layer program, where values ride as atom arguments. The \texttt{sum}/\texttt{max} aggregates of
 the decode stratum are not monotone set operators, so a demand theorem for the weighted aggregate
 evaluation itself is \open{}. The likely route is stratified: the decode stratum is non-recursive
@@ -560,8 +572,8 @@ participation ratio of decode blocks. Identifying $r_{\mathrm{eff}}$ with $\tau^
 PR counts participation under one chosen decomposition and changes under source splitting
 (Remark~\ref{rem:pr}), so it is not a geometric rank without a separate argument. The findings below are
 therefore about $r_{\mathrm{eff}}$. The natural conjecture $r_{\mathrm{eff}}\approx\min(e^{H},d)$, with $H$ the
-next-token entropy, is \emph{refuted} on a fourteen-model sweep to 72B (Pythia 14m--12b, Qwen
-0.5B--72B; decision agreement $1.00$ throughout). The architecture-fair count $r_{\mathrm{eff}}$ \emph{anti}-correlates
+next-token entropy, is \emph{refuted} on a fourteen-model sweep to 72B (Pythia~\cite{biderman2023pythia}
+14m--12b, Qwen2.5~\cite{qwen2024qwen25} 0.5B--72B; decision agreement $1.00$ throughout). The architecture-fair count $r_{\mathrm{eff}}$ \emph{anti}-correlates
 with $e^{H}$ (Pearson $-0.54$) and associates with \emph{capacity} (hidden Spearman $+0.63$, $n_b$/depth
 $+0.58$); the ratio $r_{\mathrm{eff}}/e^{H}$ climbs monotonically $0.07\to1.74$ across the ladder---larger,
 more confident models use \emph{more} effective blocks, not fewer. These pooled correlations mix two families
@@ -599,10 +611,10 @@ architecture split---rather than by what would have been tidy.
 \end{figure}
 
 \section*{Provenance of claims}
-\proved{} statements are machine-checked in the i-orca Isabelle corpus
+\proved{} statements are machine-checked in the i-orca Isabelle/HOL~\cite{nipkow2002isabelle} corpus
 (\texttt{tropical/\{TropicalSemiring,HeadTail,DecodeCapacity,RoutingRank\}.thy},
 \texttt{superposition/\{Welch,RoutingWelch,Superposition\}.thy},
-\texttt{pic\_core/\{PIC\_Core,PIC\_Logic,PIC\_Forward\}.thy},
+\texttt{pic\_core/\{PIC\_Core,PIC\_Logic,PIC\_Forward\}.thy}, \texttt{pic\_learn/PIC\_Learn.thy},
 \texttt{provable\_opt/ProvableOpt\_Common.thy}, \texttt{fieldrun/separation/Separation.thy}), all under
 \texttt{i-orca/examples/}. A \proved{} tag covers exactly the statement kernel-checked there. Classical
 steps layered on top, such as the volume-packing count of Corollary~\ref{cor:cap}(ii) and the extended-real
@@ -610,5 +622,8 @@ semiring laws of \S\ref{sec:semiring}, are marked as not kernel-checked where th
 \empirical{} statements are measured by the fieldrun runtime and the pil experiments.
 \open{} statements are flagged hypotheses. See \texttt{spec/PIC\_SPEC.md} for the operational
 definitions and file-level pointers.
+
+\bibliographystyle{plain}
+\bibliography{references}
 
 \end{document}
