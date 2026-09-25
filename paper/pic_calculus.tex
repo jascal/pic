@@ -127,15 +127,26 @@ diagrams) so as to inherit their theorems, but three things are native and get t
 \emph{incidence arrow} $j\triangleright v:=\inner{d_j}{U_v}$ names the one new primitive---provenance as
 an inner product in a learnable frame. The \emph{coalition bracket}
 $\llbracket P\rrbracket(v):=\bigotimes_{j\in P}(j\triangleright v)$ is the partial monomial of a coalition
-$P\subseteq S$ (no $T$: sources add). The \emph{margin turnstile}
+$P\subseteq S$ (no $T$: sources add). The \emph{decision turnstile} and its margin-indexed form are
 \[
-  P\vdash_\gamma v\quad:\Longleftrightarrow\quad
-  \llbracket P\rrbracket(v)-\max_{w\neq v}\llbracket P\rrbracket(w)\ \ge\ \gamma
+  P\vdash v\ :\Longleftrightarrow\ \llbracket P\rrbracket(v)-\max_{w\neq v}\llbracket P\rrbracket(w)\ >\ 0,
+  \qquad
+  P\vdash_\gamma v\ :\Longleftrightarrow\ \llbracket P\rrbracket(v)-\max_{w\neq v}\llbracket P\rrbracket(w)\ \ge\ \gamma
+  \quad(\gamma>0)
 \]
-(``coalition $P$ decides $v$ with margin $\ge\gamma$''; write $P\vdash v$ for $\gamma=0$) collapses the
-decision regimes to one line each: \emph{retrieved} $\exists j.\ \{j\}\vdash_\gamma v$;
-\emph{composed} $S\vdash v$ but $\forall j.\ \neg(\{j\}\vdash v)$; \emph{irreducible} $S\vdash v$ and
+(``coalition $P$ decides $v$'', respectively ``\dots\ with margin $\ge\gamma$''; $P\vdash_\gamma v$
+implies $P\vdash v$). The unsubscripted turnstile is \emph{strict}: a tie decides nothing. This is
+exactly the kernel predicate \texttt{decides} (\texttt{PIC\_Core.thy}) that the irreducibility theorems of
+\S\ref{sec:thm} quantify over. The turnstile collapses the decision regimes to one line each:
+\emph{retrieved} $\exists j.\ \{j\}\vdash v$; \emph{composed} $S\vdash v$ but
+$\forall j.\ \neg(\{j\}\vdash v)$; \emph{irreducible} $S\vdash v$ and
 $\forall P\subsetneq S,P\neq\emptyset.\ \neg(P\vdash v)$.
+
+The turnstile reads the coalition bracket only, \emph{without} the bias $b_v$, again matching the kernel
+definition. $S\vdash v$ therefore coincides with ``the model strictly decodes $v$'' exactly when $b\equiv0$,
+which is the case for most transformer unembeddings. When $b\neq0$, adjoin the bias as one more source:
+append a coordinate carrying $b_v$ to each $U_v$ and a source $d_b$ equal to the matching unit vector.
+Then $\llbracket S\cup\{b\}\rrbracket(v)=L(v)$, and every statement below applies to the augmented source set.
 
 \section{The semiring family}\label{sec:semiring}
 
@@ -173,27 +184,43 @@ commutative, and idempotent exactly at $T=0$ ($a\oplus_0 a=a$ but $a\oplus_1 a=a
 difference between geometry and probability.
 \end{definition}
 
-\noindent The distributive law $a\otimes(b\oplus c)=(a\otimes b)\oplus(a\otimes c)$ is the load-bearing
-one: it rewrites a sum-of-maxes (a ReLU stack) as a max-of-sums (a tropical polynomial). It and the two
-monoid laws are machine-checked at $T=0$ \proved{} (\texttt{TropicalSemiring.thy}); for general $T$ the
-distributive law is the log-domain identity
-$a+T\log(e^{b/T}+e^{c/T})=T\log(e^{(a+b)/T}+e^{(a+c)/T})$.
+\noindent The distributive law $a\otimes(b\oplus c)=(a\otimes b)\oplus(a\otimes c)$ rewrites a
+sum-of-maxes (a ReLU stack) as a max-of-sums (a tropical polynomial). \emph{What is machine-checked}
+\proved{} (\texttt{TropicalSemiring.thy}) is the $T=0$ case over the finite carrier $\RR$:
+associativity, commutativity and idempotence of $\oplus_0=\max$; associativity, commutativity and the
+identity $0$ of $\otimes=+$; and both distributive laws. The formalization has no $-\infty$. The
+$\oplus$-identity $\mathbf{0}=-\infty$ and annihilation $-\infty\otimes a=-\infty$ hold by the
+definitions on $\RR\cup\{-\infty\}$ but are \emph{not} kernel-checked. Nor is anything for $T>0$, where
+the laws are the elementary log-domain identities (e.g.\
+$a+T\log(e^{b/T}+e^{c/T})=T\log(e^{(a+b)/T}+e^{(a+c)/T})$). For $T>0$ they also follow from the
+isomorphism $x\mapsto e^{x/T}$ onto the ordinary semiring $(\RR_{\ge0},+,\times)$, so every
+$R_T$ with $T>0$ is the same semiring up to isomorphism. The one algebraically distinct member is $T=0$.
 
 \section{PIC as a calculus}\label{sec:calculus}
 
-\paragraph{Syntax.} Sources are weighted clauses; a \emph{derivation} of $v$ is a finite
-\emph{coalition} $P\subseteq S$ whose incidences combine, under $\otimes$ within the coalition and
-$\oplus_T$ across alternatives, to support $v$.
+\paragraph{Syntax.} Sources are weighted facts, and a \emph{coalition} $P\subseteq S$ is a derivation
+body whose incidences combine under $\otimes$. In the decode fragment each proposition $v$ has exactly
+\emph{one} derivation: the full coalition $S$, together with the bias. So $\otimes$ is the only operation
+inside a proposition. As in Definition~\ref{def:agg}, $\oplus_T$ ranges over the \emph{competing
+propositions}, the alternative answers to the decode query. It does not range over alternative derivations of
+one $v$.
 
-\paragraph{Semantics.} Semiring \emph{provenance} in the style of Green--Karvounarakis--Tannen: the
-value of $v$ is an element of $R_T$ accumulated over derivations, with the Gram kernel supplying the
-continuous overlap a Boolean provenance lacks. The frozen-model reading is the log-semiring provenance;
-the geometric reading is the tropical provenance.
+\paragraph{Semantics.} Semiring annotation in the style of Green--Karvounarakis--Tannen: the annotation of
+$v$ is $L(v)\in R_T$. The Gram kernel supplies the continuous overlap that a Boolean annotation lacks.
+Because $v$ has a single derivation, its provenance polynomial is the single monomial $L(v)$. $\oplus_T$
+enters one level up, at the query, as the partition $Z_T=\bigoplus_{T,v}L(v)$. This is the log-partition
+at $T=1$ and the decode value at $T=0$. A genuine $\oplus$ over \emph{alternative derivations of the same
+atom}, the case the provenance framework is built for, arises only in the recursive fragment of
+\S\ref{sec:learn} (the layer program), not in the one-step decode. The decision predicates are
+\emph{not} semiring values: the margin $m(t)=L(t)\oslash\bigoplus_{0,\,w\neq t}L(w)$ needs the
+$\otimes$-inverse, which exists because max-plus on $\RR$ is a semifield, and it always uses the
+tropical sum. The turnstile is therefore a tropical side condition on annotations at every $T$.
 
 \paragraph{Decision rules} (in the native turnstile of Definition~\ref{def:agg}).
 \begin{itemize}[nosep]
   \item \emph{Aggregate:} $L(v)=\llbracket S\rrbracket(v)\otimes b_v$; decode $\arg\max_v L(v)$.
-  \item \emph{Retrieved:} $\exists j\in S.\ \{j\}\vdash_\gamma v$ (a singleton decides; high $\mu_t$).
+  \item \emph{Retrieved:} $\exists j\in S.\ \{j\}\vdash v$ (a singleton decides, so $\mu_t\ge1$;
+        $\{j\}\vdash_\gamma v$ is the margin-$\gamma$ strengthening).
   \item \emph{Composed:} $S\vdash v$ but $\forall j\in S.\ \neg(\{j\}\vdash v)$ (no singleton; $\mu_t=0$).
   \item \emph{Irreducible:} $S\vdash v$ and $\forall P\subsetneq S,P\neq\emptyset.\ \neg(P\vdash v)$.
 \end{itemize}
@@ -283,10 +310,13 @@ This split is not a coincidence: it is the \emph{two arities} of the decode poly
 Definition~\ref{def:agg}. A $(\oplus,\otimes)$ polynomial has a monomial-count and a variable-rank, and
 PIC bounds each---the frame side bounds the \textbf{monomials} (tokens that can be cleanly decoded, the
 $\oplus$-arity) at $(1+2\rho/\gamma)^d$, the generator side bounds the \textbf{variables} (independent
-sources, the $\otimes$-arity) at $\min(M,d)$, and Welch is the obstruction that appears exactly when the
-variable side is overpacked. ``Two-sided packing'' is thus a simultaneous bound on a polynomial's
-monomial-count and its variable-rank. The frame side is astronomically slack for realistic $d$; the
-binding side is the generator---superposition is forced on the writers, not on the readouts.
+sources, the $\otimes$-arity) at $\min(M,d)$. ``Two-sided packing'' is thus a simultaneous bound on a
+polynomial's monomial-count and its variable-rank. Welch is the interference floor on \emph{both} sides.
+The readouts are overpacked too: $n_p\gg d$, so $\mathrm{FP}(U)\ge W>0$ and the unembedding frame is in
+superposition. On the frame side, however, that superposition costs no decodability, because the capacity
+bound is astronomically slack for realistic $d$. On the generator side, overpacking forces routing
+cross-talk (Theorem~\ref{thm:welch}). Superposition is thus present on both sides, but it \emph{binds} only on
+the writers.
 
 \subsection{Frame side: decode capacity (monomial count)}
 
@@ -301,13 +331,18 @@ Add the two witness inequalities; the biases cancel, and Cauchy--Schwarz with $\
 gives the bound. (Machine-checked in \texttt{DecodeCapacity.thy}.)
 \end{proof}
 
-\begin{corollary}[Head capacity \proved{}]\label{cor:cap}
-Any set $S$ of $\gamma$-decodable tokens is a $\gamma$-code: $\lVert U_v-U_w\rVert\ge\gamma$ for distinct
-$v,w\in S$. Hence $|S|\le(1+2\rho/\gamma)^d$ with $\rho=\max_v\lVert U_v\rVert$.
+\begin{corollary}[Head capacity]\label{cor:cap}
+\textup{(i)} \proved{} Any set $S$ of $\gamma$-decodable tokens is a $\gamma$-code:
+$\lVert U_v-U_w\rVert\ge\gamma$ for distinct $v,w\in S$ (\texttt{head\_capacity}).
+\textup{(ii)} Hence, by the classical volume-packing argument, $|S|\le(1+2\rho/\gamma)^d$ with
+$\rho=\max_v\lVert U_v\rVert$. The argument: disjoint radius-$\gamma/2$ balls about the points of $S$ fit
+inside the ball of radius $\rho+\gamma/2$.
 \end{corollary}
 
-This is the cell-capacity half; the bound is astronomically slack for realistic $d$, so this side rarely
-binds.
+\noindent Only part (i) is kernel-checked. The cardinality bound (ii) is a standard textbook step that the
+i-orca corpus does not formalize: the Lebesgue-measure argument is absent, so (ii) must not be cited as
+\proved{}. This is the cell-capacity half. The bound is astronomically slack for realistic $d$, so this
+side rarely binds.
 
 \subsection{Generator side: routing rank and Welch interference (variable rank)}
 
@@ -349,9 +384,16 @@ The constant $2\delta$ is tight (a $m(t)=2\delta$ token can be tied by a $\delta
 certificate is silent for $m(t)\le2\delta$---exactly the small-margin residue.
 \end{theorem}
 
-Theorem~\ref{thm:headtail} is the algebra behind the empirical observation that a per-position sparse
-head (a handful of late-layer blocks) reproduces the decode \emph{when} it dominates the tail; harder
-tokens push mass into the residue.
+\noindent Note what Theorem~\ref{thm:headtail} partitions: \emph{tokens} ($H,T\subseteq V$), i.e.\ the
+monomials of $Z_0$. The empirical sparse-circuit finding is about something else: a per-position head of
+a few late-layer \emph{blocks} reproduces the decode \empirical{}. That finding partitions \emph{sources}
+and needs Theorem~\ref{thm:margin} instead. Split $S=H_s\sqcup T_s$, and let
+$L_{H}(v)=\llbracket H_s\rrbracket(v)+b_v$ be the head-only logit. Suppose the tail's contribution is
+within $\delta$ of a common offset $c$ on every candidate, $|\llbracket T_s\rrbracket(v)-c|\le\delta$.
+Then $L=L_H+\llbracket T_s\rrbracket$ is a $\delta$-perturbation of $L_H+c$, which has the same argmax
+and the same margins as $L_H$. So if the head's margin exceeds $2\delta$, its decision is the model's.
+This is an immediate instance of Theorem~\ref{thm:margin}, not separately kernel-checked. Tokens whose head
+margin is $\le2\delta$ are the source-side residue.
 
 \subsection{Irreducibility}
 
@@ -398,18 +440,35 @@ on frozen sources. The win that exists is \emph{retraining the frame/subspace}--
 boundary---rather than fitting an encoder into a frozen dictionary, consistent with the verification-side
 result that frozen compression hits a $\Theta(d)$ floor a rank-bottlenecked retrained update clears.
 
-\paragraph{The logic-programming reading.} Structurally PIC is a semiring-weighted logic program: the
-turnstile $P\vdash_\gamma v$ is a weighted rule (body coalition derives head proposition with margin
-$\gamma$), the answer is the least fixpoint of the immediate-consequence operator
-$T_P(I)=\{v:\exists P\subseteq I,\ P\vdash v\}$ evaluated in $R_T$, and the query is the decode. The
-semiring chooses the logic---$T=0$ is shortest-path/Viterbi (min-cost) logic, $T=1$ is probabilistic
-(ProbLog-style) logic, Boolean is classical Datalog---with PIC's one native move that the fact weights are
-\emph{derived from geometry}, $j\triangleright v=\inner{d_j}{U_v}$, rather than given. The demand-closure
-theorem (\S\ref{sec:thm}, $\operatorname{lfp}(\operatorname{restrict}T\,D)=\operatorname{lfp}T\cap D$
-\proved{}) is exactly the soundness of the magic-sets/demand optimization for such a language, and the
-margin certificate bounds how far a clause weight may drift before an answer flips. The frame/decode
-separation is its type discipline: frame-side clauses (what overlaps what) plus decode-side queries
-(margins, multiplicity).
+\paragraph{The logic-programming reading.} Structurally PIC is a semiring-weighted logic program with
+two strata.
+\begin{itemize}[nosep]
+  \item \emph{The decode stratum is non-recursive.} Its atoms are source facts $\mathrm{src}(j)$ weighted by
+        $j\triangleright v$ and decision atoms $\mathrm{dec}(v)$. Sources and propositions are different
+        sorts, so the turnstile is the rule scheme ``$\mathrm{dec}(v)\Leftarrow\{\mathrm{src}(j):j\in P\}$
+        whenever $P\vdash v$''. Its immediate-consequence operator is
+        $T_P(I)=I\cup\{\mathrm{dec}(v):\exists P\subseteq\{j:\mathrm{src}(j)\in I\}.\ P\vdash v\}$. No
+        $\mathrm{dec}$ atom occurs in a body, so the least fixpoint is reached in one step.
+  \item \emph{The layer stratum is where recursion enters.} Its atoms $(\ell,x)$ say ``the residual at
+        layer $\ell$ is $x$'', the embedding is a fact, and each layer is a clause
+        $(\ell{+}1,\mathrm{step}_\ell\,x)\Leftarrow(\ell,x)$. Its least model is exactly the forward
+        trajectory \proved{} (\texttt{PIC\_Forward.thy}, \texttt{lfp\_is\_trajectory}). The decode logits are
+        the frame read-out of its final-layer fact \proved{} (\texttt{lfp\_decode\_logits}), and the
+        decode stratum is evaluated on top.
+\end{itemize}
+The semiring chooses the logic: $T=0$ is Viterbi/min-cost logic, $T=1$ is probabilistic (ProbLog-style)
+logic, and Boolean is classical Datalog. PIC's one native move is that the fact weights are
+\emph{derived from geometry}, $j\triangleright v=\inner{d_j}{U_v}$, rather than given.
+
+Demand closure, $\operatorname{lfp}(\operatorname{restrict}\,T\,D)=\operatorname{lfp}T\cap D$ for a
+monotone, demand-closed consequence operator, is proved \proved{} (\texttt{PIC\_Logic.thy},
+\texttt{demand\_restrict\_lfp}; also \texttt{ProvableOpt\_Common.thy}). It gives the soundness of the
+magic-sets/demand optimization for any stratum whose operator is a monotone set operator on atoms. That
+includes the layer program, where values ride as atom arguments. The \texttt{sum}/\texttt{max} aggregates of
+the decode stratum are not monotone set operators, so a demand theorem for the weighted aggregate
+evaluation itself is \open{}. The margin certificate (Theorem~\ref{thm:margin}) bounds how far a clause
+weight may drift before an answer flips. The frame/decode separation acts as the type discipline:
+frame-side clauses (what overlaps what) and decode-side queries (margins, multiplicity).
 
 \section{An empirical parameter the proofs do not pin down}\label{sec:tau}
 
@@ -456,7 +515,11 @@ architecture split---rather than by what would have been tidy.
 \proved{} statements are machine-checked in the i-orca Isabelle corpus
 (\texttt{tropical/\{TropicalSemiring,HeadTail,DecodeCapacity,RoutingRank\}.thy},
 \texttt{superposition/\{Welch,RoutingWelch,Superposition\}.thy},
-\texttt{provable\_opt/ProvableOpt\_Common.thy}, \texttt{fieldrun/separation/Separation.thy}).
+\texttt{pic\_core/\{PIC\_Core,PIC\_Logic,PIC\_Forward\}.thy},
+\texttt{provable\_opt/ProvableOpt\_Common.thy}, \texttt{fieldrun/separation/Separation.thy}), all under
+\texttt{i-orca/examples/}. A \proved{} tag covers exactly the statement kernel-checked there. Classical
+steps layered on top, such as the volume-packing count of Corollary~\ref{cor:cap}(ii) and the extended-real
+semiring laws of \S\ref{sec:semiring}, are marked as not kernel-checked where they occur.
 \empirical{} statements are measured by the fieldrun runtime and the pil experiments.
 \open{} statements are flagged hypotheses. See \texttt{spec/PIC\_SPEC.md} for the operational
 definitions and file-level pointers.
