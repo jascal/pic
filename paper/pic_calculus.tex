@@ -38,7 +38,7 @@
 \large A semiring-weighted incidence algebra for the transformer decode,\\
 its frozen-model geometry, and its learnable frame}
 \author{}
-\date{Draft --- companion to \texttt{spec/PIC\_SPEC.md} v0.3.2}
+\date{Draft --- companion to \texttt{spec/PIC\_SPEC.md} v0.3.3}
 
 \begin{document}
 \maketitle
@@ -418,6 +418,28 @@ i-orca corpus does not formalize: the Lebesgue-measure argument is absent, so (i
 \proved{}. This is the cell-capacity half. The bound is astronomically loose for realistic $d$. That
 looseness shows the bound is not the constraint, not that frame geometry never constrains margins.
 
+The per-token condition, by contrast, is exact.
+
+\begin{theorem}[Optimal margin is hull distance \proved{}]\label{thm:hull}
+Let $b\equiv0$ and let $C$ be a finite, nonempty set of rivals of $t$. Then
+\[
+  \sup_{\lVert r\rVert\le1}\ \min_{v\in C}\ \inner{r}{U_t-U_v}
+  \;=\; \operatorname{dist}\bigl(U_t,\ \operatorname{conv}\{U_v: v\in C\}\bigr),
+\]
+and the supremum is attained. Taking $C=V\setminus\{t\}$, $t$ is $\gamma$-decodable iff this hull distance is at
+least $\gamma$. For a
+unit-norm frame, with $\mu_t=\max_{v\neq t}\inner{U_t}{U_v}$,
+$1-\mu_t\ \le\ \text{optimal margin}\ \le\ \sqrt{2-2\mu_t}$.
+\end{theorem}
+\begin{proof}[Proof sketch]
+The closest hull point $p$ is a convex combination of rivals, so any unit $r$ scores some rival at most
+$\inner{r}{U_t-p}\le\lVert U_t-p\rVert$. The direction $(U_t-p)/\lVert U_t-p\rVert$ attains it, by the
+obtuse-angle property of closest points. The sandwich follows from $\lVert U_t-p\rVert\ge\inner{U_t-p}{U_t}$ and
+from $p$ being no farther than the nearest rival. (\texttt{PIC\_Margin\_Hull.thy}:
+\texttt{optimal\_margin\_hull}, \texttt{gdecodable\_iff\_hull\_dist},
+\texttt{optimal\_margin\_coherence\_sandwich}.)
+\end{proof}
+
 \subsection{Generator side: routing rank and Welch interference (variable rank)}
 
 $M$ rules write logit adjustments along fixed readout vectors $\{a_1,\dots,a_M\}$ through
@@ -435,10 +457,13 @@ $\sum_{i\neq j}\inner{f_i}{f_j}^2\ge n(n-M)/M$, strictly positive exactly when $
 routing requires $M\ge n$.
 \end{theorem}
 
-\begin{remark}[The missing link \open{}]
-The step ``routing interference $\Rightarrow$ margin degradation'' is \emph{not} a kernel theorem.
-Trained models pack features at $\approx$ the Welch floor with healthy margins; the coherence-to-margin
-implication is measured and mild, not proved.
+\begin{remark}[The remaining link \open{}]
+Theorem~\ref{thm:hull} settles the optimal margin in terms of the \emph{signed} coherence $\mu_t$. Welch
+(Theorem~\ref{thm:welch}) bounds only $\lvert$coherence$\rvert$, and a large negative inner product costs
+nothing, so overpacking alone does not force a \emph{named} token's optimal margin down. Closing this needs a
+lower bound on the largest signed inner product among $n$ unit vectors, a spherical-code question. Trained
+models pack features at $\approx$ the Welch floor with healthy margins, and the measured coherence-to-margin
+link is mild.
 \end{remark}
 
 \subsection{The decode certificate and its robustness}
@@ -468,6 +493,12 @@ Then $L=L_{\mathrm{head}}+\llbracket\St\rrbracket$ is a $\delta$-perturbation of
 which has the same argmax and the same margins as $L_{\mathrm{head}}$. So if the head's margin exceeds $2\delta$, its decision is the model's.
 This is an immediate instance of Theorem~\ref{thm:margin}, not separately kernel-checked. Tokens whose head
 margin is $\le2\delta$ are the source-side residue.
+
+The one source split whose skipped part is real skipped compute is a layer \emph{prefix}, i.e.\ early exit.
+Certifying it needs a bound on what the remaining layers will write. On Qwen2.5-0.5B this fails \empirical{}:
+no position is certified at any exit layer, whether the suffix is bounded by its norm (even the exact norm) or by
+the leftover after a J-lens prediction. The last layer's write is 50--84$\times$ the certified radius, mostly
+orthogonal to the decision directions. Even an uncertified early exit could skip only about one layer.
 
 \subsection{Irreducibility}
 
@@ -614,7 +645,7 @@ architecture split---rather than by what would have been tidy.
 \proved{} statements are machine-checked in the i-orca Isabelle/HOL~\cite{nipkow2002isabelle} corpus
 (\texttt{tropical/\{TropicalSemiring,HeadTail,DecodeCapacity,RoutingRank\}.thy},
 \texttt{superposition/\{Welch,RoutingWelch,Superposition\}.thy},
-\texttt{pic\_core/\{PIC\_Core,PIC\_Logic,PIC\_Forward\}.thy}, \texttt{pic\_learn/PIC\_Learn.thy},
+\texttt{pic\_core/\{PIC\_Core,PIC\_Logic,PIC\_Forward,PIC\_Margin\_Hull\}.thy}, \texttt{pic\_learn/PIC\_Learn.thy},
 \texttt{provable\_opt/ProvableOpt\_Common.thy}, \texttt{fieldrun/separation/Separation.thy}), all under
 \texttt{i-orca/examples/}. A \proved{} tag covers exactly the statement kernel-checked there. Classical
 steps layered on top, such as the volume-packing count of Corollary~\ref{cor:cap}(ii) and the extended-real
