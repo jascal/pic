@@ -1,8 +1,16 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.2). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.3). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.3 (2026-09-25)** — records new results. *Proved* (i-orca #25, `PIC_Margin_Hull.thy`):
+> - the optimal bias-free margin equals the hull distance;
+> - γ-decodability ⟺ hull distance ≥ γ;
+> - the unit-frame sandwich `1−μ ≤ optimal ≤ √(2−2μ)` (§5.1, §5.3, §7).
+>
+> The coherence ⇒ margin open item narrows to the signed-coherence Welch step. *Empirical* (pil #126, #127):
+> early exit on Qwen2.5-0.5B certifies 0/640, with both norm bounds and J-lens bounds (§7).
+>
 > **v0.3.2 (2026-09-25)** — definitions only. `η²_k` is defined as pil computes it (§4.1). The `δ` in (S2)
 > is the per-step bound `r_max·ε_U + ε_b`, and step decision preservation cites i-orca `PIC_Learn.thy`
 > *(proved)*. The monotonicity in (S2) stays unproved.
@@ -538,6 +546,15 @@ half of the two-sided bound. The bound is loose by an astronomical factor for re
 the constraint on real models. That looseness says nothing about whether frame geometry limits actual
 margins (§7, coherence ⇒ margin).
 
+**Exact per-token decodability** (`pic_core/PIC_Margin_Hull.thy`, bias-free). The counting bound above is
+loose, but the per-token condition is exact:
+- **`optimal_margin_hull`** *(proved)*. The best margin any unit residual gives `t` over a finite rival set
+  `C` is `Sup_{‖r‖≤1} Min_{v∈C} ⟨r, U_t − U_v⟩ = infdist(U_t, conv{U_v : v ∈ C})`: the distance from `U_t` to
+  the convex hull of its rivals. No residual does better (`hull_margin_upper`), and the direction from the
+  closest hull point attains it (`hull_margin_attained`).
+- **`gdecodable_iff_hull_dist`** *(proved)*. With `b ≡ 0`, `t` is γ-decodable iff that hull distance is
+  `≥ γ`. So γ-decodability is a statement about where each token sits relative to the hull of the others.
+
 ### 5.2 Generator side — routing rank (`tropical/RoutingRank.thy`)
 
 `M` trainable rules write logit adjustments along fixed readout vectors `{a_1,…,a_M}`; whatever the
@@ -562,12 +579,19 @@ the Welch setup on the rule-activation side.
   rules than the ambient dimension forces the write directions to be linearly **dependent**
   (`DIM < card(a_K) ⟹ ¬ independent(a_K)`) — the *qualitative* generator-side packing, now a property
   of the encoder and the companion to `routing_rank`.
-- *(empirical, open)* The step **"routing interference ⇒ margin degradation"** is **not** a kernel
-  theorem — the **one** thing left open on this side. The *count/rank/dependence* facts are all proved
-  (`routing_rank`, `encoder_superposition`); the quantitative interference floor `≥ n(n−d)/d` is
-  `Welch.thy`; only the implication from coherence to a *margin penalty* is unproved. Trained models pack
-  features at ≈ the Welch floor with healthy margins; the coherence→margin link is measured and mild
-  (`pil` docs §5f/§5g), not proved.
+- **Coherence ⇒ margin, what is proved** (bias-free, unit-norm frame; `PIC_Interference.thy` and
+  `PIC_Margin_Hull.thy`). Let `μ_t = max_{v≠t} ⟨U_t, U_v⟩` be `t`'s largest **signed** cross inner product.
+  The matched-filter margin is `1 − μ_t` (`mfmargin_unit`), and the **optimal** margin is sandwiched:
+  `1 − μ_t ≤ optimal margin ≤ √(2 − 2μ_t)` (`optimal_margin_coherence_sandwich`) *(proved)*. So coherence
+  controls the optimal margin up to a square root. The decoder can steer off the matched filter, but never
+  beyond `√(2 − 2μ_t)`.
+- *(open)* **The Welch step.** Welch bounds `|⟨U_i, U_j⟩|`, and a large *negative* inner product costs
+  nothing in the sandwich. So the Welch floor alone does not force any named token's optimal margin down.
+  Closing this needs a lower bound on the largest *signed* inner product among `n` unit vectors in `ℝ^d` (a
+  spherical-code question). The classical fact that at most `2d` vectors can be pairwise non-acute gives
+  only `μ_t > 0` for some token once `n > 2d`, which is not kernel-checked here and too weak to be useful.
+  Trained models pack features at ≈ the Welch floor with healthy margins; the measured coherence→margin link
+  is mild (`pil` docs §5f/§5g).
 
 ### 5.4 The decode certificate — head/tail (`tropical/HeadTail.thy`)
 
@@ -777,14 +801,25 @@ of the three tags. None is marked "resolved" unless its backing artifact is name
 
   *(Superseded: an earlier 7-model sweep reported Pearson −0.71 / +0.75 with `nb`, and a "≈12
   scale-invariant blocks" reading that was a Qwen raw-PR artifact.)*
-- **coherence ⇒ margin** *(matched-filter form proved; optimal form open).* Now pinned precisely
-  (`PIC_Interference.thy`): under the **matched-filter** decoder (steer by the target feature) the margin
-  is `1 − (max cross-coherence)`, so coherence subtracts *directly* (`mfmargin_le`, `mfmargin_lt_one`).
-  But the **unconditional** claim is *false* — the achievable (best-steering) margin is `≥ 1 − ρ`, so the
-  decoder can recover (the measured "cope at the Welch floor"). The genuinely open part is a geometric
-  lower bound on the **optimal** margin in the Welch regime `n > M`. Everything else up to it is proved:
-  rank (`routing_rank`), superposition (`encoder_superposition`), the interference floor `≥ n(n−d)/d`
-  (`Welch.thy`).
+- **coherence ⇒ margin** *(matched-filter and optimal forms proved for bias-free frames; the Welch step
+  open).*
+  - The matched-filter margin is `1 − μ_t` (`PIC_Interference.thy`).
+  - The optimal margin is exactly the distance from `U_t` to its rivals' convex hull
+    (`optimal_margin_hull`). For unit-norm frames it lies in `[1 − μ_t, √(2 − 2μ_t)]`
+    (`optimal_margin_coherence_sandwich`, `PIC_Margin_Hull.thy`) *(proved)*.
+  - Still open: turning the Welch regime `n > d` into a margin bound for a *named* token. The sandwich is in
+    signed coherence, and Welch bounds only `|coherence|` (§5.3).
+  - Also proved on the way: rank (`routing_rank`), superposition (`encoder_superposition`), the
+    interference floor `≥ n(n−d)/d` (`Welch.thy`).
+- **early exit on Qwen2.5-0.5B** *(empirical, negative; pil #126, #127)*. Can the decision be certified
+  final after layer `k`, with the remaining layers skipped? Pairwise full-vocabulary certificate, with the
+  suffix bounded by its norm (oracle, weight-derived, calibrated) or by the leftover after the J-lens
+  prediction.
+  - **0/640** positions certified at any exit layer, under any bound. With one layer left, the last write
+    is 50–84× the certified radius, and the J-lens explains only about 24% of it.
+  - The uncertified headroom is only about 1.1–1.7 layers against a full-vocabulary check costing about 9
+    layers.
+  - Scope: one 0.5B model. A larger model is the place to look again.
 - **global (frame-free) irreducibility** *(open — argued in prose, not kernel-checked).* **Admissibility
   assumed:** gates `g_j(x) ∈ ℝ` free per input, write directions `a_j` fixed, frame `U` free (any
   `U : V → H`, biases free). The question is whether a composed token is irreducible under *every*
@@ -814,13 +849,15 @@ of the three tags. None is marked "resolved" unless its backing artifact is name
   lfp's final fact — so the lfp determines the decode. `step` is **abstract**: this encodes the trajectory of
   any step function, and it does **not** verify the numerical transformer implementation (§3).
 
-**Status of the open set.** Closed in the last round, with the artifacts named: the generator-side
+**Status of the open set.** Closed, with the artifacts named: the generator-side
 superposition bound on the explicit encoder (`encoder_superposition`); the margin certificate,
 self-contained in `PIC_Logic`; the Boolean LP metatheory (operator, least model, magic-sets, unbounded
-recursion; `PIC_Logic.thy`); and trajectory = lfp for an abstract step (`PIC_Forward.thy`). `pic_core`
+recursion; `PIC_Logic.thy`); trajectory = lfp for an abstract step (`PIC_Forward.thy`); and the optimal
+bias-free margin as a hull distance, with its coherence sandwich (`PIC_Margin_Hull.thy`). `pic_core`
 covers the §5 theorem set except the quantitative Welch floor (`Welch.thy`) and the volume count of
 §5.1. **Open:**
-1. the optimal-margin form of coherence ⇒ margin;
+1. the Welch step of coherence ⇒ margin: a signed-coherence bound that forces a named token's optimal margin
+   down when `n > d` (the optimal margin itself is now exact);
 2. global (frame-free) irreducibility, argued but not kernel-checked;
 3. the activation-relative certificate;
 4. the `r_eff` ↔ `τ★` identification and any functional form for it;
