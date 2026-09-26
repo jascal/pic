@@ -38,7 +38,7 @@
 \large A semiring-weighted incidence algebra for the transformer decode,\\
 its frozen-model geometry, and its learnable frame}
 \author{}
-\date{Draft --- companion to \texttt{spec/PIC\_SPEC.md} v0.3.3}
+\date{Draft --- companion to \texttt{spec/PIC\_SPEC.md} v0.3.4}
 
 \begin{document}
 \maketitle
@@ -361,6 +361,11 @@ yet $\mathrm{PR}=1$. Conversely, many identical deciding sources give a large PR
 under re-decomposition, since splitting a source into $k$ equal parts inflates it without changing the
 residual. PR describes participation under a fixed decomposition. Coalition sufficiency is the turnstile's
 job.
+
+On real positions the \emph{centred} PR $r_{\mathrm{eff}}$ does carry signal \empirical{}. On Qwen2.5-0.5B it tracks
+the greedy sufficient-coalition size beyond what the margin explains (partial Spearman $+0.35$ to $+0.47$ on prose
+and code, at block and layer granularity), while raw PR tracks nothing. It is ordinal, not a count: a median
+$r_{\mathrm{eff}}\approx13$ against a median sufficient coalition of 3 blocks.
 \end{remark}
 
 \paragraph{Frame-side.}

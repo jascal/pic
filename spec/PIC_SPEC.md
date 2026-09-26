@@ -1,8 +1,12 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.3). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.4). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.4 (2026-09-25)** — records pil #128. Centred `r_eff` is an ordinal predictor of greedy
+> sufficient-coalition size beyond margin *(empirical)*; raw PR is not; `r_eff` is not a count and not a
+> spectral rank (§4.1, §7). The "raw ≈ centred for RMSNorm" note is corrected.
+>
 > **v0.3.3 (2026-09-25)** — records new results. *Proved* (i-orca #25, `PIC_Margin_Hull.thy`):
 > - the optimal bias-free margin equals the hull distance;
 > - γ-decodability ⟺ hull distance ≥ γ;
@@ -436,12 +440,27 @@ multiplies its contribution to `PR` without changing the residual or the decode.
 participation under a fixed decomposition, and it ignores competitors entirely. Coalition sufficiency is
 the turnstile's job (§2.5). `μ_t` is the **unanimity** count, subject to the tie caveat in §2.5.
 
+**What centred PR does predict** *(empirical; pil #128, Qwen2.5-0.5B, 1280 positions)*. The worst-case
+failures above are real, but on actual positions the **centred** `r_eff` (measurement note below) tracks the
+greedy sufficient-coalition size `k_suf` *beyond what the margin explains*:
+- partial Spearman `ρ(r_eff, k_suf | margin)` = +0.35…+0.47, with cluster-bootstrap CI above 0, on prose and
+  code, at block and layer granularity. It replicates on three 0.5B dumps and is weaker at 7B (+0.18…+0.27,
+  n = 80);
+- raw PR tracks nothing (ρ ≈ +0.05…+0.10);
+- `r_eff` is **ordinal, not a count**: median `r_eff` ≈ 13 against median `k_suf` = 3, and the top
+  `round(r_eff)` blocks decide `t` only 50–60% of the time;
+- splitting one block into 4 raises `r_eff` about ×1.5 on real positions, so it is meaningful only at a fixed
+  decomposition.
+
+Read `r_eff` as "which positions need more blocks", never as "how many".
+
 > **Measurement note (architecture-fair PR).** When sources carry a large common-mode component
 > identical across candidates (e.g. the neox LayerNorm/embedding offset), raw `PR(c_·(t))` is inflated
 > by a term that cancels in the argmax. The discriminative effective-source count centres each source
-> across candidates first: `PR( (c_j(t) − mean_v c_j(v))_j )`. Raw and centred agree for RMSNorm frames
-> (small common-mode) but differ for LayerNorm; report the centred form for cross-architecture
-> comparison. *(See `pil/experiments/tau_star_entropy.py`.)*
+> across candidates first: `PR( (c_j(t) − mean_v c_j(v))_j )`. Report the centred form. Raw and centred
+> are **not** interchangeable even for RMSNorm frames: on Qwen2.5 only the centred form tracks coalition
+> size (pil #128), and their values differ (§7: Qwen raw PR 7.7–13.8 vs centred ~11–17). *(See
+> `pil/experiments/tau_star_entropy.py`, `pil/pil/pr_validation.py`.)*
 
 ### 4.2 Frame-side quantities (intrinsic, label-free)
 
@@ -786,7 +805,9 @@ of the three tags. None is marked "resolved" unless its backing artifact is name
 - **`τ★` and `r_eff`** *(empirical; the link between them is open).* `τ★` names the effective rank that
   the packing exponent would take in practice, in place of the ambient `d`. What has been *measured* is
   different: `r_eff`, the common-mode-centred participation ratio of decode blocks (§4.1).
-  **Identifying `r_eff` with `τ★` is itself open.** PR counts source participation under one chosen
+  **Identifying `r_eff` with `τ★` is itself open.** pil #128 finds the spectral effective rank of the block
+  matrix unrelated to `r_eff` (ρ = −0.03 prose, −0.34 code): `r_eff` is an ordinal predictor of
+  sufficient-coalition size (§4.1), not a geometric rank. PR counts source participation under one chosen
   decomposition, and it changes under source splitting and merging (§4.1). So it is not a geometric rank
   without a separate theorem or validation. The measurements themselves (14 models, 14m→72B, Pythia +
   Qwen; `pil/results/tau_star_entropy_72b.txt`):
