@@ -1,8 +1,12 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.6). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.7). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.7 (2026-10-04)** — records rosetta #59 (with pil #137). *Empirical*, pre-registered: a certificate-trained
+> TPR compiled to weighted Soufflé facts, placed after n-gram and idiom layers, adds **no** certified coverage of
+> GPT-2 small on SVO or COPY (§5.8). Each failed certificate is a `proved` verdict over its finite test domain only.
+>
 > **v0.3.6 (2026-10-04)** — records i-orca #28 and pil #135/#136. *Proved* (`pic_core/PIC_Binding.thy`): the
 > **pairwise** substitution certificate is exact (an iff), the uniform T5(a) form implies it, and a hybrid form
 > checks a finite rival set pairwise and bounds the rest by a norm (§5.8). *Empirical*: pairwise coverage equals
@@ -738,6 +742,23 @@ tag ledger is authoritative.
   parameter) fails: TPR wins list-copy (0.637 / 0.961), the pair-code wins small-budget SVO (0.798), large-budget
   SVO ties. **H2** (a certificate-aware objective beats MSE) passes 4/4, +0.10 to +0.62 for TPR. **H3**: uniform
   coverage ≤ 0.006 everywhere, so no fit has a vocabulary-wide guarantee; each proof covers its own context.
+- **rosetta `docs/compiled-tpr-{prereg,outcome}.md` (#59; training half pil `experiments/compile_tpr.py`, #137),
+  pre-registered.** Does a learned TPR certify GPT-2 small decisions that n-grams and idioms cannot? The pil #136
+  `cert`-objective TPR (`d_F = 32`) is compiled to fixed-point weighted facts and run **in Soufflé only** (Datalog
+  role parsing, argmax and a dev-selected margin guard θ; no weights or unembedding at runtime). It sits after an
+  n-gram layer and an idiom layer, and every layer is checked by `dl/equiv.dl` against fieldrun references on a
+  test firing domain frozen before references were read. **Q1: no on both tasks**; additional certified coverage 0.
+  - **SVO.** No idiom survives its all-correct guard (GPT-2 copies the subject on only ~82% of contexts), so the
+    TPR faces the whole test set. It fires on 469 contexts, agrees on 468, and its certificate fails on one
+    counterexample (` captain` vs ` butcher`). The 468 are all subject copies, i.e. idiom-expressible decisions.
+  - **COPY.** The frozen copy guard fires on all 3,600 contexts and misses 122 (mostly near-match decoys), so the
+    TPR is never consulted. This is a router-order failure, not a test of the TPR.
+  - **Post-hoc, not pre-registered.** Without θ, the TPR is right on 228/424 object choices, 52/228 non-sentence
+    tokens and 10/120 decoy cases, but never with margins that clear a zero-error guard. Reading: the decisions no
+    crisp rule predicts are GPT-2's low-margin ones, which is where certification fails (cf. pil #136).
+  - The `R_in_sentence` residual split extends the pre-registered `R_obj`/`R_other` split; the verdict does not
+    depend on it. The frozen driver is rosetta `e22f017` (sha256 `33b938ae…`, pinned in `protocol.json`), not the
+    later audit edits.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.

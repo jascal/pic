@@ -552,6 +552,12 @@ compressed substitutes, a certificate-aware training objective raised exact cove
 overall, and uniform coverage stayed at most $0.006$ \empirical{}. Coverage of unseen contexts, the pre-norm step,
 compressed binding, and the uniform-over-domain and hull forms remain \open{}.
 
+A pre-registered follow-up compiled the certificate-trained fit to weighted Datalog facts and ran it in Soufflé
+alone, behind $n$-gram and idiom layers. It added no certified coverage of GPT-2 small on either task
+\empirical{}: on the subject--verb--object probe it agreed on $468$ of the $469$ contexts where it fired, and one
+counterexample fails the certificate. Its confident decisions were the ones an idiom already expresses. Without its
+guard it was sometimes right on the residual, but never with enough margin to certify.
+
 \subsection{Irreducibility}
 
 For a composition matrix $c:\text{sources}\times\text{outcomes}\to\RR$, $S$ \emph{decides} $t$ if
