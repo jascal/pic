@@ -1,8 +1,15 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.5). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.6). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.6 (2026-10-04)** — records i-orca #28 and pil #135/#136. *Proved* (`pic_core/PIC_Binding.thy`): the
+> **pairwise** substitution certificate is exact (an iff), the uniform T5(a) form implies it, and a hybrid form
+> checks a finite rival set pairwise and bounds the rest by a norm (§5.8). *Empirical*: pairwise coverage equals
+> decision agreement on every arm, so the v0.3.5 "0% coverage" is a property of the **uniform** form only; the
+> KL-trained TPR is certified per-context on 98.6% (pil #135). Pre-registered (pil #136): a certificate-aware
+> objective raises pairwise coverage in 4/4 cells; no substitute family wins; uniform coverage stays ≤ 0.006.
+>
 > **v0.3.5 (2026-10-03)** — records i-orca #27. *Proved* (`pic_core/PIC_Binding.thy`): tensor-product binding
 > theorems T1 (coherence, absolute and signed, plus the optimal-margin corollary), T2 (diagonal-inclusive frame
 > potential, Welch value and ratio multiplicative), T3 (matched-filter unbinding certificate), and T5(a) (last-layer
@@ -701,15 +708,36 @@ product with another element, as in §5.3.
   - This is the per-context certificate behind "substituting a fitted structure for the residual preserves the
     decision".
   - Decode input only: the pre-norm step is *(open)*.
+- **`substitution_pairwise_iff`** *(proved)* — **T5(a), exact.** For `t ∈ V`, the substituted decode
+  `⟨r̂, U_v⟩ + b_v` has strict argmax `t` **iff** for every rival `v ≠ t`,
+  `L(t) − L(v) > ⟨r − r̂, U_t − U_v⟩`. `substitution_certified_pairwise` is the sufficient direction.
+  - Because it is an iff, it certifies *exactly* the contexts on which the decision is preserved: on a finite
+    evaluated set, pairwise coverage equals decision agreement. It says nothing about unseen contexts.
+- **`uniform_implies_pairwise`** *(proved).* The uniform condition above (`margin > 2δ` with
+  `|⟨r − r̂, U_v⟩| ≤ δ` on `V`) implies the pairwise one, so uniform coverage ⊆ pairwise coverage.
+- **`substitution_certified_hybrid`** *(proved).* For a finite rival set `K` (e.g. the top-K): check `K`
+  pairwise, and every `v ∈ V − K` by `L(t) − L(v) > |⟨r − r̂, U_t⟩| + ‖r − r̂‖·u_max`. Hybrid coverage ⊆
+  pairwise coverage; it needs only `K` readout rows plus a norm.
 
 *(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); T5's uniform-over-domain and hull
 forms; the projection/clean-up statements. The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
 tag ledger is authoritative.
 
 *(empirical)*, with no bearing on any theorem above:
-- **pil `docs/notes/tpr_substitution_certificate.md` (#134).** On GPT-2 small's decode input, the T5(a) certificate
-  covers **0/4000** contexts for every TPR fit, including a KL-trained fit that agrees on 98.6% of decisions. A
-  rank-matched PCA projection is certified on 94%.
+- **pil `docs/notes/tpr_substitution_certificate.md` (#134, #135).** GPT-2 small's decode input, 4,000 contexts.
+  The **uniform** certificate covers **0/4000** for every TPR fit, including a KL-trained fit that agrees on 98.6%
+  of decisions; a rank-matched PCA projection is uniformly certified on 94%. The **pairwise** certificate's
+  coverage equals agreement on every arm (KL TPR 0.986, PCA 0.998), as the iff requires; hybrid (K = 32) covers
+  0 for the TPR fits and 0.141 for PCA. So the TPR fit is per-context certified on 98.6% of these contexts; the
+  uniform bound is what fails, because the fit deviates by tens of logits off the top tokens. Every verdict is
+  computed in Soufflé over conservatively rounded fixed-point facts, with a soundness check (certified ⇒ argmax
+  kept) and the subset relations asserted on each run.
+- **pil `docs/notes/certified_substitutes_{prereg,outcome}.md` (#136), pre-registered.** Compressed substitutes
+  of GPT-2 small's decode input (additive rank-k, TPR, conjunctive pair-code) at matched parameter budgets, on
+  list-copy and a passive-SVO probe, 72 fits, held-out pairwise coverage. **H1** (the pair-code certifies most per
+  parameter) fails: TPR wins list-copy (0.637 / 0.961), the pair-code wins small-budget SVO (0.798), large-budget
+  SVO ties. **H2** (a certificate-aware objective beats MSE) passes 4/4, +0.10 to +0.62 for TPR. **H3**: uniform
+  coverage ≤ 0.006 everywhere, so no fit has a vocabulary-wide guarantee; each proof covers its own context.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.
