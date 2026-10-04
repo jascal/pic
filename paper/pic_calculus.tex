@@ -536,10 +536,21 @@ If $L(v)=\langle r,U_v\rangle+b_v$ has argmax $t$ and $L(t)-L(v)>2\max_{v\in V}|
 every $v\ne t$, then $t$ is still the strict argmax of $\langle\hat r,U_v\rangle+b_v$.
 \end{theorem}
 
-\noindent Theorem~\ref{thm:subst} turns ``a fitted structure can stand in for the residual'' into a per-context
-certificate. On GPT-2 small's decode input it covers no context for any tensor-product fit \empirical{}. That
-includes a fit that agrees with the model on $98.6\%$ of decisions but deviates by tens of logits off the top
-tokens. The pre-norm step, compressed binding, and the uniform and hull forms remain \open{}.
+\begin{theorem}[Exact substitution certificate \proved{}]\label{thm:substpair}
+For $t\in V$, $t$ is the strict argmax of $\langle\hat r,U_v\rangle+b_v$ if and only if
+$L(t)-L(v)>\langle r-\hat r,U_t-U_v\rangle$ for every $v\ne t$. The condition of Theorem~\ref{thm:subst} implies
+it. A hybrid form checks a finite rival set $K$ this way and every $v\notin K$ by
+$L(t)-L(v)>|\langle r-\hat r,U_t\rangle|+\|r-\hat r\|\,u_{\max}$.
+\end{theorem}
+
+\noindent Theorems~\ref{thm:subst} and~\ref{thm:substpair} turn ``a fitted structure can stand in for the
+residual'' into a per-context certificate. Because Theorem~\ref{thm:substpair} is an iff, its coverage on an
+evaluated set equals decision agreement. On GPT-2 small's decode input the uniform form covers no context for any
+tensor-product fit, while the exact form certifies a KL-trained fit on $98.6\%$ of $4000$ contexts \empirical{}:
+the fit agrees with the model at the top but deviates by tens of logits off it. In a pre-registered comparison of
+compressed substitutes, a certificate-aware training objective raised exact coverage in every cell, no family won
+overall, and uniform coverage stayed at most $0.006$ \empirical{}. Coverage of unseen contexts, the pre-norm step,
+compressed binding, and the uniform-over-domain and hull forms remain \open{}.
 
 \subsection{Irreducibility}
 
