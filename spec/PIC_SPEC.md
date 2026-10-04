@@ -1,8 +1,14 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.4). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.5). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.5 (2026-10-03)** — records i-orca #27. *Proved* (`pic_core/PIC_Binding.thy`): tensor-product binding
+> theorems T1 (coherence, absolute and signed, plus the optimal-margin corollary), T2 (diagonal-inclusive frame
+> potential, Welch value and ratio multiplicative), T3 (matched-filter unbinding certificate), and T5(a) (last-layer
+> substitution certificate) (§5.8). *Empirical* (pil #134, lm-sae #234): the certificate covers 0% of contexts for
+> every TPR fit of GPT-2 small's decode input; GPT-2's binding is conjunctive, not systematic (§5.8).
+>
 > **v0.3.4 (2026-09-25)** — records pil #128. Centred `r_eff` is an ordinal predictor of greedy
 > sufficient-coalition size beyond margin *(empirical)*; raw PR is not; `r_eff` is not a count and not a
 > spectral rank (§4.1, §7). The "raw ≈ centred for RMSNorm" note is corrected.
@@ -666,6 +672,47 @@ For a composition matrix `c : sources × outcomes → ℝ`, `S` **decides** `t` 
 This is the kernel statement of **`μ_t = 0 ≠ irreducible`**: composedness (low multiplicity) is
 *necessary but not sufficient* for genuine irreducibility. Global hardness (is a given composed token
 *ever* reducible by a better frame?) stays **open**.
+
+### 5.8 Tensor-product binding (`pic_core/PIC_Binding.thy`)
+
+Fillers `f_a ∈ ℝ^{d_F}` and roles `r_s ∈ ℝ^{d_R}` are bound by a concrete tensor product,
+`tprod f r = (χ i. f_i r) ∈ real^'m^'n`. So `⟨f⊗r, g⊗s⟩ = ⟨f,g⟩⟨r,s⟩` is a lemma (`inner_tprod`), not an
+assumption. `μ_F`, `μ_R` are absolute coherences. The signed coherence of an element is its largest *signed* inner
+product with another element, as in §5.3.
+
+- **`tensor_coherence`** *(proved).* For `|A|, |S| ≥ 2` and unit frames, `μ(F⊗R) = max(μ_F, μ_R)`. Binding does
+  not raise coherence.
+- **`tensor_signed_coherence`** *(proved).* The signed coherence of a bound pair `(a, s)` is the max of three
+  terms: the filler's signed coherence, the role's, and `max_{b≠a, t≠s} ⟨f_a,f_b⟩⟨r_s,r_t⟩`. The last can be
+  positive when both factors' signed coherences are negative.
+- **`tensor_optimal_margin`** *(proved).* Via `optimal_margin_coherence_sandwich` (§5.3), a bound pair's optimal
+  decode margin is at least `1 −` its signed coherence.
+- **`tensor_frame_potential`, `tensor_welch_value`, `tensor_fp_welch_ratio`** *(proved)*, in the
+  **diagonal-inclusive** convention `FP(X) = Σ_{i,j} ⟨x_i,x_j⟩²` with Welch value `n²/d`. FP, the Welch value and
+  their ratio are all multiplicative under binding.
+  - pil's reported `fp/welch` is the off-diagonal normalised form, which does **not** factor.
+  - For unit vectors, `FP_incl = n + n(n−1)·fp_pil`.
+- **`unbind_certified`** *(proved).* Reading role `s` with the matched filter `r_s` decodes `σ(s)` whenever
+  `1 − ⟨f_{σ(s)}, f_b⟩ > 2(k−1)μ_R` for every rival filler `b`, where `k` is the number of bound pairs.
+  - The factor 2 enters once, from `decode_margin_certified` (§5.5), with `δ = (k−1)μ_R` the *per-score* crosstalk.
+- **`substitution_certified`, `_max`, `_norm`** *(proved)* — **T5(a).** Replacing the decode input `r` by any `r̂`
+  preserves the argmax `t` when `margin(L,V,t) > 2·max_{v∈V}|⟨r − r̂, U_v⟩|`. The `_norm` form uses
+  `δ = ‖r − r̂‖·u_max`.
+  - This is the per-context certificate behind "substituting a fitted structure for the residual preserves the
+    decision".
+  - Decode input only: the pre-norm step is *(open)*.
+
+*(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); T5's uniform-over-domain and hull
+forms; the projection/clean-up statements. The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
+tag ledger is authoritative.
+
+*(empirical)*, with no bearing on any theorem above:
+- **pil `docs/notes/tpr_substitution_certificate.md` (#134).** On GPT-2 small's decode input, the T5(a) certificate
+  covers **0/4000** contexts for every TPR fit, including a KL-trained fit that agrees on 98.6% of decisions. A
+  rank-matched PCA projection is certified on 94%.
+- **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
+  periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
+  conjunctive.
 
 ---
 

@@ -505,6 +505,42 @@ no position is certified at any exit layer, whether the suffix is bounded by its
 the leftover after a J-lens prediction. The last layer's write is 50--84$\times$ the certified radius, mostly
 orthogonal to the decision directions. Even an uncertified early exit could skip only about one layer.
 
+\subsection{Tensor-product binding}\label{sec:binding}
+
+Bind fillers $f_a\in\RR^{d_F}$ to roles $r_s\in\RR^{d_R}$ by the concrete tensor product, so that
+$\langle f\otimes r,g\otimes s\rangle=\langle f,g\rangle\langle r,s\rangle$ is a lemma rather than an assumption.
+Write $\mu_F,\mu_R$ for absolute coherences and $\mu^{\pm}(x)$ for an element's largest signed inner product with
+another element.
+
+\begin{theorem}[Binding and coherence \proved{}]\label{thm:bindcoh}
+For finite $A,S$ with $|A|,|S|\ge2$ and unit frames, $\mu(F\otimes R)=\max(\mu_F,\mu_R)$. The signed coherence of a
+bound pair $(a,s)$ is the maximum of $\mu^{\pm}(f_a)$, $\mu^{\pm}(r_s)$ and
+$\max_{b\ne a,\,t\ne s}\langle f_a,f_b\rangle\langle r_s,r_t\rangle$. Its optimal decode margin is at least $1$ minus
+that signed coherence.
+\end{theorem}
+
+\begin{theorem}[Frame potential under binding \proved{}]\label{thm:bindfp}
+With the diagonal-inclusive $\mathrm{FP}(X)=\sum_{i,j}\langle x_i,x_j\rangle^2$ and Welch value $n^2/d$,
+$\mathrm{FP}$, the Welch value and their ratio are multiplicative: $\mathrm{FP}(F\otimes R)=\mathrm{FP}(F)\,
+\mathrm{FP}(R)$. The off-diagonal normalised ratio does not factor.
+\end{theorem}
+
+\begin{theorem}[Unbinding certificate \proved{}]\label{thm:unbind}
+For $k$ bound pairs, the matched filter $r_s$ decodes $\sigma(s)$ whenever
+$1-\langle f_{\sigma(s)},f_b\rangle>2(k-1)\mu_R$ for every rival filler $b$. This is Theorem~\ref{thm:margin} with
+the per-score crosstalk $\delta=(k-1)\mu_R$.
+\end{theorem}
+
+\begin{theorem}[Last-layer substitution \proved{}]\label{thm:subst}
+If $L(v)=\langle r,U_v\rangle+b_v$ has argmax $t$ and $L(t)-L(v)>2\max_{v\in V}|\langle r-\hat r,U_v\rangle|$ for
+every $v\ne t$, then $t$ is still the strict argmax of $\langle\hat r,U_v\rangle+b_v$.
+\end{theorem}
+
+\noindent Theorem~\ref{thm:subst} turns ``a fitted structure can stand in for the residual'' into a per-context
+certificate. On GPT-2 small's decode input it covers no context for any tensor-product fit \empirical{}. That
+includes a fit that agrees with the model on $98.6\%$ of decisions but deviates by tens of logits off the top
+tokens. The pre-norm step, compressed binding, and the uniform and hull forms remain \open{}.
+
 \subsection{Irreducibility}
 
 For a composition matrix $c:\text{sources}\times\text{outcomes}\to\RR$, $S$ \emph{decides} $t$ if
@@ -650,7 +686,7 @@ architecture split---rather than by what would have been tidy.
 \proved{} statements are machine-checked in the i-orca Isabelle/HOL~\cite{nipkow2002isabelle} corpus
 (\texttt{tropical/\{TropicalSemiring,HeadTail,DecodeCapacity,RoutingRank\}.thy},
 \texttt{superposition/\{Welch,RoutingWelch,Superposition\}.thy},
-\texttt{pic\_core/\{PIC\_Core,PIC\_Logic,PIC\_Forward,PIC\_Margin\_Hull\}.thy}, \texttt{pic\_learn/PIC\_Learn.thy},
+\texttt{pic\_core/\{PIC\_Core,PIC\_Logic,PIC\_Forward,PIC\_Margin\_Hull,PIC\_Binding\}.thy}, \texttt{pic\_learn/PIC\_Learn.thy},
 \texttt{provable\_opt/ProvableOpt\_Common.thy}, \texttt{fieldrun/separation/Separation.thy}), all under
 \texttt{i-orca/examples/}. A \proved{} tag covers exactly the statement kernel-checked there. Classical
 steps layered on top, such as the volume-packing count of Corollary~\ref{cor:cap}(ii) and the extended-real
