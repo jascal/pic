@@ -599,8 +599,10 @@ pairwise condition decides the model's agreement with the code point. Together t
 subject--verb--object contexts at $d_F=32$ on GPT-2 small, where every ball centred on a code point certified none
 \empirical{}. A kernel-checked theorem extends each certificate to a ball around the observed residual
 \proved{}; the median radius is about $2.6\%$ of the residual's distance from its code point \empirical{}.
-Certifying contexts whose residuals have not been observed remains
-\open{}.
+On a finite template the domain can simply be enumerated. Applied to all $24{,}960$ subject--verb--object
+contexts, the per-context certificate covers about two-thirds of the domain, including filler combinations the
+substitute never saw, at the same rate as held-out ones \empirical{}. No single fit covers the whole domain.
+Certifying contexts on which the model itself has not been run remains \open{}.
 
 A pre-registered follow-up compiled the certificate-trained fit to weighted Datalog facts and ran it in Soufflé
 alone, behind $n$-gram and idiom layers. It added no certified coverage of GPT-2 small on either task

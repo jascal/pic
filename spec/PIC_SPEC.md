@@ -1,8 +1,12 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.12). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.13). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.13 (2026-10-05)** — records pil #142. *Empirical*, pre-registered: by exhaustion over the **whole** finite
+> SVO template domain (24,960 contexts), about two-thirds of contexts are certified per context. Never-sampled filler
+> combinations certify like held-out ones. No fit certifies the whole domain (§5.8).
+>
 > **v0.3.12 (2026-10-05)** — records i-orca #34 and pil #141. *Proved* (`PIC_Cleanup.thy`): a certified
 > neighbourhood around an **observed** residual (§5.8). *Empirical*, pre-registered: per-context half-space
 > certificates cover about two-thirds of SVO `d_F=32` contexts on GPT-2 small, where every code-centred ball covered
@@ -799,8 +803,9 @@ product with another element, as in §5.3.
     robustness around each.
 
 *(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); a fit-error bound off the
-evaluated contexts (T5(b)'s premise); certificates for **unseen** contexts (the per-context certificates and their
-neighbourhoods need the observed residual). The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
+evaluated contexts (T5(b)'s premise); certificates for contexts the **host** has not been run on (per-context
+certificates, their neighbourhoods and finite-domain exhaustion all need the observed residual); domain-wide
+equivalence on a finite template (no TPR fit reaches it). The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
 tag ledger is authoritative.
 
 *(empirical)*, with no bearing on any theorem above:
@@ -877,6 +882,20 @@ tag ledger is authoritative.
     `ρ_loc ≈ 0.17–0.18`, about 2.6% of `‖n‖`; all 173,460 sampled perturbations held.
   - Clean-up is the binding slack (`δ_c ≈ 0.20` vs `δ_h ≈ 0.46–0.48`). LIST still has no exact clean-up.
   - Not claimed: unseen contexts. The neighbourhoods certify perturbations of observed residuals.
+- **pil `docs/notes/domain_exhaustion_{prereg,outcome}.md` (#142), pre-registered, with a disclosure-only addendum
+  and a post-run documentation erratum.** #141's certificate on **every** context of the finite SVO domain D: 40 ×
+  39 × 16 = 24,960 contexts, of which 12,960 were never sampled. TPR `d_F` ∈ {8, 32} × `mse`/`cert`/`t6` × 3 seeds,
+  trained on 7,200.
+  - **H1 passes:** `F_cov(D)` is **0.666** (`d_F=32` `mse`) and **0.692** (`t6`). The best fit certifies 18,145 of
+    24,960. Each certified context is proved for that fit, and the certified sets `D_cert` are committed as bitmasks
+    (`domain_exhaustion_certified.npz`; an (S, O, V) grid, decoded by `experiments/domain_certified.py`).
+  - **H2 passes:** never-sampled contexts certify within 0.006 of the held-out test split in every eligible cell.
+    Every filler appeared in training, so this is generalisation to unseen filler **combinations**, not to unseen
+    fillers.
+  - **No fit certifies all of D** (at least 6,815 uncertified). Post-hoc: the union of the 18 fits covers 91.5%, and
+    the intersection of the six `d_F=32` `mse`/`t6` fits covers 34.3%. The binding constraint is the conjunction of
+    clean-up and agreement.
+  - Not claimed: host-compute savings (exhaustion runs GPT-2 on every context), or anything outside the template.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.
