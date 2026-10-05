@@ -550,7 +550,22 @@ tensor-product fit, while the exact form certifies a KL-trained fit on $98.6\%$ 
 the fit agrees with the model at the top but deviates by tens of logits off it. In a pre-registered comparison of
 compressed substitutes, a certificate-aware training objective raised exact coverage in every cell, no family won
 overall, and uniform coverage stayed at most $0.006$ \empirical{}. Coverage of unseen contexts, the pre-norm step,
-compressed binding, and the uniform-over-domain and hull forms remain \open{}.
+and compressed binding remain \open{}.
+
+\begin{theorem}[Domain certificate and hull ceiling \proved{}]\label{thm:subst-domain}
+(i) If $\|r(x)-\hat r(x)\|\le\varepsilon$ for every context $x$ in a set $D$, and every margin exceeds
+$2\varepsilon u_{\max}$, then substitution preserves every decision on $D$, evaluated or not. (ii) For a bias-free
+decode, a certificate that needs every margin $\langle r,U_t-U_v\rangle$ above $m$ can fire only if
+$m<\|r\|\,\mathrm{dist}(U_t,\operatorname{conv}\{U_v\}_{v\ne t})$. With a per-token bias, the same holds in the
+lifted frame $(U_v,b_v/s)$ for every $s>0$.
+\end{theorem}
+
+\noindent Part~(i) moves the burden to its premise: an error bound off the evaluated contexts is \open{}. Part~(ii)
+bounds threshold certificates only; the exact form has no ceiling. On GPT-2 small, a pre-registered test asked
+whether this ceiling explains the uniform failure. It does not \empirical{}. Treating the decode input's large
+context-constant component as a bias, fewer than $12\%$ of refused contexts sit at the ceiling in every cell. GPT-2's
+margins are a median $5$--$8\%$ of it, a lower bound on the share of the achievable margin the model uses. Whether
+margin widening can close the gap is \open{}.
 
 A pre-registered follow-up compiled the certificate-trained fit to weighted Datalog facts and ran it in Soufflé
 alone, behind $n$-gram and idiom layers. It added no certified coverage of GPT-2 small on either task
