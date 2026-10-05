@@ -594,6 +594,14 @@ projection $P$ preserves every margin of every residual if and only if it fixes 
 If it moves one, $d$, the residual $d-Pd$ loses exactly $\|d-Pd\|^2$ of margin along $d$. A denoising gain from
 projection therefore needs a range that misses some readout difference, a nonlinear reader, or snapping.
 
+Certification succeeds once it is done per context. The half-space conditions decide clean-up exactly, and the
+pairwise condition decides the model's agreement with the code point. Together they certify about two-thirds of the
+subject--verb--object contexts at $d_F=32$ on GPT-2 small, where every ball centred on a code point certified none
+\empirical{}. A kernel-checked theorem extends each certificate to a ball around the observed residual
+\proved{}; the median radius is about $2.6\%$ of the residual's distance from its code point \empirical{}.
+Certifying contexts whose residuals have not been observed remains
+\open{}.
+
 A pre-registered follow-up compiled the certificate-trained fit to weighted Datalog facts and ran it in Soufflé
 alone, behind $n$-gram and idiom layers. It added no certified coverage of GPT-2 small on either task
 \empirical{}: on the subject--verb--object probe it agreed on $468$ of the $469$ contexts where it fired, and one
