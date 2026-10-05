@@ -1,8 +1,14 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.7). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.8). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.8 (2026-10-04)** — records i-orca #29 and pil #138. *Proved* (`pic_core/PIC_Binding.thy`): T5(b), the
+> substitution certificate over a whole domain given one fit-error bound on all of it; T5(c), the hull ceiling on
+> any margin-threshold certificate (bias-free, and biased via a lift) (§5.8). *Empirical*, pre-registered: the
+> ceiling does **not** explain the uniform certificate's failure on GPT-2 small (16/16 cells); GPT-2's margins are
+> a median 5–8% of it (§5.8).
+>
 > **v0.3.7 (2026-10-04)** — records rosetta #59 (with pil #137). *Empirical*, pre-registered: a certificate-trained
 > TPR compiled to weighted Soufflé facts, placed after n-gram and idiom layers, adds **no** certified coverage of
 > GPT-2 small on SVO or COPY (§5.8). Each failed certificate is a `proved` verdict over its finite test domain only.
@@ -722,9 +728,22 @@ product with another element, as in §5.3.
 - **`substitution_certified_hybrid`** *(proved).* For a finite rival set `K` (e.g. the top-K): check `K`
   pairwise, and every `v ∈ V − K` by `L(t) − L(v) > |⟨r − r̂, U_t⟩| + ‖r − r̂‖·u_max`. Hybrid coverage ⊆
   pairwise coverage; it needs only `K` readout rows plus a norm.
+- **`substitution_domain_norm`, `substitution_domain_pairwise`** *(proved)* — **T5(b).** For a set `D` of contexts
+  `x` with decisions `t(x)`: if `‖r(x) − r̂(x)‖ ≤ ε` on **all** of `D`, then every margin `> 2·ε·u_max` (norm
+  form), or every per-rival margin `> ε·‖U_t − U_v‖` (pairwise form), certifies every context in `D`, evaluated or
+  not. `domain_norm_premise_implies_pairwise` shows the pairwise form is at least as strong.
+  - The theorem moves the burden to its premise. A fit-error bound **off the evaluated contexts** is *(open)*.
+- **`certificate_hull_ceiling`, `substitution_hull_ceiling`** *(proved)* — **T5(c).** For a bias-free decode and a
+  residual of any norm, a certificate that needs every margin `⟨r, U_t⟩ − ⟨r, U_v⟩ > m` can fire only if
+  `m < ‖r‖·hdist(t)`, with `hdist(t)` the distance from `U_t` to the convex hull of its rivals (§5.3).
+  - It bounds **threshold** certificates (uniform, norm, hybrid tail), not the exact pairwise iff.
+  - The ceiling is set by the frame and `‖r‖`: independent of the substitute, **not** of the model.
+- **`certificate_hull_ceiling_biased`** *(proved).* With a per-token bias `b`, lift to `(U_v, b_v/s)`: then
+  `m < ‖(w, s)‖ · hdist_s(t)` for every `s > 0`. It is an upper bound, not attained in general. It is how a
+  context-constant component `c` of the decode input is treated as a bias (`b_v = ⟨c, U_v⟩`, `w = u − c`).
 
-*(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); T5's uniform-over-domain and hull
-forms; the projection/clean-up statements. The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
+*(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); a fit-error bound off the
+evaluated contexts (T5(b)'s premise); the projection/clean-up statements (T6). The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
 tag ledger is authoritative.
 
 *(empirical)*, with no bearing on any theorem above:
@@ -759,6 +778,18 @@ tag ledger is authoritative.
   - The `R_in_sentence` residual split extends the pre-registered `R_obj`/`R_other` split; the verdict does not
     depend on it. The frozen driver is rosetta `e22f017` (sha256 `33b938ae…`, pinned in `protocol.json`), not the
     later audit edits.
+- **pil `docs/notes/hull_ceiling_{prereg,outcome}.md` (#138), pre-registered, with two pre-run addenda.** Why does
+  the uniform certificate fail? Each uniform-refused context is CEILING (`2δ` at or above the T5(c) ceiling, so no
+  residual of that norm could be certified) or NOT-EXCLUDED (below it on a fixed lift grid).
+  - **Addendum A (disclosed):** GPT-2 small's decode input is dominated by a context-constant component (`‖u‖` ≈
+    147–227, of which `‖mean u‖` ≈ 144–226), which makes the bias-free ceiling vacuous. So the primary ceiling
+    treats that component as a bias via `certificate_hull_ceiling_biased`.
+  - **Result: NOT-EXCLUDED-BOUND in 16/16 cells** (#136's families and objectives, both budgets, LIST and SVO,
+    fit seed 0). CEILING is 0.2–3% of refusals on SVO and 3–12% on LIST; the PCA-240 control certifies
+    0.936 / 0.616. The ceiling does not explain the failure.
+  - **GPT-2's margins are a median 5% (SVO) and 8% (LIST) of the lifted ceiling.** The ceiling is not attained in
+    general, so this is a lower bound on the share of the achievable margin GPT-2 uses.
+  - NOT-EXCLUDED does not mean a certifiable residual exists. Whether margin widening (T6) can help stays *(open)*.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.
