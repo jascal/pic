@@ -1,8 +1,13 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.8). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.9). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.9 (2026-10-05)** — records i-orca #30 and pil #139. *Proved* (`pic_core/PIC_Cleanup.thy`): T6(b), the
+> clean-up certificate with explicit constants (§5.8). *Empirical*, pre-registered: on GPT-2 small it certifies **no**
+> context in any of 27 fits; both radii bind, and clean-up nonetheless recovers the structure exactly on 81–84% of
+> SVO `d_F=32` contexts, far outside its proved radius (§5.8).
+>
 > **v0.3.8 (2026-10-04)** — records i-orca #29 and pil #138. *Proved* (`pic_core/PIC_Binding.thy`): T5(b), the
 > substitution certificate over a whole domain given one fit-error bound on all of it; T5(c), the hull ceiling on
 > any margin-threshold certificate (bias-free, and biased via a lift) (§5.8). *Empirical*, pre-registered: the
@@ -741,9 +746,23 @@ product with another element, as in §5.3.
 - **`certificate_hull_ceiling_biased`** *(proved).* With a per-token bias `b`, lift to `(U_v, b_v/s)`: then
   `m < ‖(w, s)‖ · hdist_s(t)` for every `s > 0`. It is an upper bound, not attained in general. It is how a
   context-constant component `c` of the decode input is treated as a bias (`b_v = ⟨c, U_v⟩`, `w = u − c`).
+- **`cleanup_certified`** *(proved)* — **T6(b)**, in `pic_core/PIC_Cleanup.thy`. Code points
+  `x(σ) = W·T(σ) + b₀`; host residual `u = x(σ) + n`. Clean-up decodes `P(u − b₀)` with a linear left inverse `P` of
+  `W` (`‖P y‖ ≤ K‖y‖`), unbinds each role with a readout `w_s` (`⟨r_s, w_s⟩ = 1`), snaps to the nearest filler in
+  `F_s`, and rebinds. If `‖n‖ < min(ρ(σ), β(σ))`, clean-up returns `x(σ)` **exactly** and the host decides the
+  code point's decision.
+  - **Clean-up radius** `ρ(σ) = min_s (γ_s/2 − κ_s(σ)) / (K·‖w_s‖)`, with `γ_s` the filler separation and `κ_s` the
+    role crosstalk (zero for dual readouts). The `γ/2` is tight (`nearest_point_radius_tight`).
+  - **Agreement radius** `β(σ) = min_{v≠t} m_v(σ)/‖U_t − U_v‖`, the distance from `x(σ)` to the boundary of its
+    decision cell, so it is tight (`agreement_ball`).
+  - Supporting lemmas: `nearest_point_cleanup`, `nearest_point_selects`, `unbind_norm_le`, `role_cleanup_close`,
+    `role_cleanup`, `cleanup_exact`, `left_inverse_noise`.
+  - Clean-up does **not** raise the host's margin. It makes the substitute exactly a code point, so the
+    certificate uses the **code's** margin, over a ball of residuals.
 
 *(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); a fit-error bound off the
-evaluated contexts (T5(b)'s premise); the projection/clean-up statements (T6). The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
+evaluated contexts (T5(b)'s premise); T6(a) (linear projection in the readout span); a clean-up radius tighter
+than the worst-case `1/σ_min(W)` form. The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
 tag ledger is authoritative.
 
 *(empirical)*, with no bearing on any theorem above:
@@ -790,6 +809,16 @@ tag ledger is authoritative.
   - **GPT-2's margins are a median 5% (SVO) and 8% (LIST) of the lifted ceiling.** The ceiling is not attained in
     general, so this is a lower bound on the share of the achievable margin GPT-2 uses.
   - NOT-EXCLUDED does not mean a certifiable residual exists. Whether margin widening (T6) can help stays *(open)*.
+- **pil `docs/notes/cleanup_certificate_{prereg,outcome}.md` (#139), pre-registered, with a disclosure-only
+  addendum.** The T6(b) certificate on TPR substitutes of GPT-2 small's decode input: LIST `d_F=8`, SVO `d_F=8` and
+  `d_F=32` (LIST `d_F=32` has no left inverse), three objectives including a new `t6` hinge that pushes code points
+  deeper into the host's decision cell, three fit seeds.
+  - **Coverage is 0 in all 27 fits** (H1 and H2 fail). Both radii bind in every cell. The closest is SVO `d_F=32`
+    with `t6`: `‖n‖ ≈ 6.3` against `β ≈ 1.0` and `ρ ≈ 0.08`. On LIST, `ρ` is 3–4 orders of magnitude short.
+  - The `t6` objective raises the code points' median `β` from 0.26–0.43 to ≈ 1.0 without raising `‖n‖`. Not
+    enough.
+  - **Clean-up works far outside its proved radius:** exact recovery on 81–84% of SVO `d_F=32` contexts (`mse`,
+    `t6`) at `‖n‖ ≈ 80ρ`. The worst-case `K = 1/σ_min(W)` bound is loose; a tighter one is *(open)*.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.
