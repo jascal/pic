@@ -1,8 +1,11 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.10). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.11). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.11 (2026-10-05)** — records i-orca #33. *Proved* (`PIC_Cleanup.thy`): T6(a), as an iff. An orthogonal
+> projection preserves every margin of every residual **iff** its range contains every readout difference (§5.8).
+>
 > **v0.3.10 (2026-10-05)** — records i-orca #32 and pil #140. *Proved* (`PIC_Cleanup.thy`): the directional
 > clean-up radius `ρ_dir`, exact per half-space and never below the worst case (§5.8). *Empirical*, pre-registered:
 > `ρ_dir` is 3.5–45× the worst-case radius on GPT-2 small, yet certifies none of the exact recoveries; no ball
@@ -771,9 +774,19 @@ product with another element, as in §5.3.
   agreement.
   - `directional_radius_tight`: exact per half-space.
   - `directional_q_bound`, `worst_case_implies_directional`: `ρ_dir ≥ ρ`.
+- **`projection_preserves_margins_iff`** *(proved)* — **T6(a).** Let `P` be an orthogonal projection (linear,
+  idempotent, self-adjoint).
+  - If `P` fixes every readout difference `U_t − U_v`, then `⟨P r, U_t − U_v⟩ = ⟨r, U_t − U_v⟩` for every residual
+    `r`, so every margin and every decision is unchanged (`projection_preserves_margins`,
+    `projection_preserves_decision`).
+  - Conversely, if `P` moves a difference `d`, then `r = d − P d` scores 0 along `d` after projection but
+    `‖d − P d‖² > 0` before (`projection_margin_changes`).
+  - So `P` preserves all margins **iff** its range contains every readout difference. A margin gain from a
+    **linear** projection needs a range that misses a readout difference; otherwise it needs a nonlinear reader or
+    snapping (T6(b)).
 
 *(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); a fit-error bound off the
-evaluated contexts (T5(b)'s premise); T6(a) (linear projection in the readout span); a certificate for the
+evaluated contexts (T5(b)'s premise); a certificate for the
 directions GPT-2's clean-up noise actually takes (the per-context half-space check is exact, but has not been run as
 a verdict). The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
 tag ledger is authoritative.
