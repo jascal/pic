@@ -589,6 +589,11 @@ the radius is tight, no ball certificate explains the recovery; the model's nois
 per-context check of the half-space conditions is exact, as the pairwise substitution check was, and certifying the
 directions the noise actually takes remains \open{}.
 
+Linear projection, by contrast, cannot widen margins without leaving the readout's span \proved{}: an orthogonal
+projection $P$ preserves every margin of every residual if and only if it fixes every readout difference $U_t-U_v$.
+If it moves one, $d$, the residual $d-Pd$ loses exactly $\|d-Pd\|^2$ of margin along $d$. A denoising gain from
+projection therefore needs a range that misses some readout difference, a nonlinear reader, or snapping.
+
 A pre-registered follow-up compiled the certificate-trained fit to weighted Datalog facts and ran it in Soufflé
 alone, behind $n$-gram and idiom layers. It added no certified coverage of GPT-2 small on either task
 \empirical{}: on the subject--verb--object probe it agreed on $468$ of the $469$ contexts where it fired, and one
