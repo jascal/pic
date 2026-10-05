@@ -579,7 +579,15 @@ are tight.
 a pre-registered test on tensor-product substitutes certified no context in any of $27$ fits \empirical{}. Residuals
 lay about $6$--$16$ from their code points, against $\beta\lesssim1$ and a far smaller $\rho$. Yet clean-up
 recovered the structure exactly on up to $84\%$ of contexts, far outside its proved radius, so the worst-case
-$1/\sigma_{\min}(W)$ bound is loose. Whether a tighter clean-up bound closes the gap is \open{}.
+$1/\sigma_{\min}(W)$ bound is loose.
+
+The exact clean-up region is an intersection of half-spaces, one per role and rival filler, and its inradius
+$\rho_{\mathrm{dir}}=\min_{s,a}(\|d_a\|^2/2-\langle c_s,d_a\rangle)/\|M_s^{\top}d_a\|$ is exact per half-space and
+never below the worst-case radius \proved{}. On GPT-2 small it is $3.5$--$45\times$ larger, yet a pre-registered
+test found it certifies none of the exact recoveries: the residuals lie $11$--$15\times$ beyond it \empirical{}. Since
+the radius is tight, no ball certificate explains the recovery; the model's noise avoids the region's nearest faces. A
+per-context check of the half-space conditions is exact, as the pairwise substitution check was, and certifying the
+directions the noise actually takes remains \open{}.
 
 A pre-registered follow-up compiled the certificate-trained fit to weighted Datalog facts and ran it in Soufflé
 alone, behind $n$-gram and idiom layers. It added no certified coverage of GPT-2 small on either task
