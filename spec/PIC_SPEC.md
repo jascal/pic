@@ -1,8 +1,13 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.9). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.10). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.10 (2026-10-05)** — records i-orca #32 and pil #140. *Proved* (`PIC_Cleanup.thy`): the directional
+> clean-up radius `ρ_dir`, exact per half-space and never below the worst case (§5.8). *Empirical*, pre-registered:
+> `ρ_dir` is 3.5–45× the worst-case radius on GPT-2 small, yet certifies none of the exact recoveries; no ball
+> certificate explains them (§5.8).
+>
 > **v0.3.9 (2026-10-05)** — records i-orca #30 and pil #139. *Proved* (`pic_core/PIC_Cleanup.thy`): T6(b), the
 > clean-up certificate with explicit constants (§5.8). *Empirical*, pre-registered: on GPT-2 small it certifies **no**
 > context in any of 27 fits; both radii bind, and clean-up nonetheless recovers the structure exactly on 81–84% of
@@ -759,10 +764,18 @@ product with another element, as in §5.3.
     `role_cleanup`, `cleanup_exact`, `left_inverse_noise`.
   - Clean-up does **not** raise the host's margin. It makes the substitute exactly a code point, so the
     certificate uses the **code's** margin, over a ball of residuals.
+- **`cleanup_certified_directional`** *(proved)* — **the directional clean-up radius.** The exact clean-up region is
+  an intersection of half-spaces, one per (role `s`, rival filler `a`): `⟨M_s n, d_a⟩ < ‖d_a‖²/2 − ⟨c_s, d_a⟩`, with
+  `d_a = f_a − f_σ(s)` and `M_s n = unbind(P n, w_s)` (`nearest_iff_halfspace`, an iff). Its inradius around `x(σ)` is
+  `ρ_dir(σ) = min_{s,a} (‖d_a‖²/2 − ⟨c_s, d_a⟩) / ‖M_sᵀ d_a‖`, and `‖n‖ < min(ρ_dir, β)` gives exact clean-up and host
+  agreement.
+  - `directional_radius_tight`: exact per half-space.
+  - `directional_q_bound`, `worst_case_implies_directional`: `ρ_dir ≥ ρ`.
 
 *(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); a fit-error bound off the
-evaluated contexts (T5(b)'s premise); T6(a) (linear projection in the readout span); a clean-up radius tighter
-than the worst-case `1/σ_min(W)` form. The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
+evaluated contexts (T5(b)'s premise); T6(a) (linear projection in the readout span); a certificate for the
+directions GPT-2's clean-up noise actually takes (the per-context half-space check is exact, but has not been run as
+a verdict). The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
 tag ledger is authoritative.
 
 *(empirical)*, with no bearing on any theorem above:
@@ -818,7 +831,16 @@ tag ledger is authoritative.
   - The `t6` objective raises the code points' median `β` from 0.26–0.43 to ≈ 1.0 without raising `‖n‖`. Not
     enough.
   - **Clean-up works far outside its proved radius:** exact recovery on 81–84% of SVO `d_F=32` contexts (`mse`,
-    `t6`) at `‖n‖ ≈ 80ρ`. The worst-case `K = 1/σ_min(W)` bound is loose; a tighter one is *(open)*.
+    `t6`) at `‖n‖ ≈ 80ρ`. The worst-case `K = 1/σ_min(W)` bound is loose.
+- **pil `docs/notes/cleanup_radius_{prereg,outcome}.md` (#140), pre-registered, with a disclosure-only addendum.**
+  How much of that exact recovery does the directional radius certify? #139's setup, fresh seeds.
+  - **None** (H1 fails, 0/3 eligible cells). On SVO `d_F=32`, clean-up is exact on 80–82% of contexts (`mse`, `t6`)
+    at `‖n‖ ≈ 6.2`, against `ρ_dir ≈ 0.41–0.56`.
+  - `ρ_dir/ρ` is 3.5–45× (medians 44.0 on LIST `d_F=8`, 7.8 and 5.8 on SVO); H2 (≥ 10× in 2 of 3 settings) fails.
+  - Because `ρ_dir` is exact per half-space, the gap is not looseness. GPT-2's noise points away from the clean-up
+    region's nearest faces, so **no ball certificate explains the recovery**. A per-context half-space check would,
+    exactly, as with #135's pairwise substitution check.
+  - Disclosed: a first run stalled on a system suspend and was restarted with the same frozen script.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.
