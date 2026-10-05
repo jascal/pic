@@ -1,8 +1,13 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.11). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.12). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.12 (2026-10-05)** — records i-orca #34 and pil #141. *Proved* (`PIC_Cleanup.thy`): a certified
+> neighbourhood around an **observed** residual (§5.8). *Empirical*, pre-registered: per-context half-space
+> certificates cover about two-thirds of SVO `d_F=32` contexts on GPT-2 small, where every code-centred ball covered
+> none, and each comes with a certified neighbourhood (§5.8).
+>
 > **v0.3.11 (2026-10-05)** — records i-orca #33. *Proved* (`PIC_Cleanup.thy`): T6(a), as an iff. An orthogonal
 > projection preserves every margin of every residual **iff** its range contains every readout difference (§5.8).
 >
@@ -784,11 +789,18 @@ product with another element, as in §5.3.
   - So `P` preserves all margins **iff** its range contains every readout difference. A margin gain from a
     **linear** projection needs a range that misses a readout difference; otherwise it needs a nonlinear reader or
     snapping (T6(b)).
+- **`cleanup_local_certified`** *(proved)* — **a certified neighbourhood around an observed residual** `u₀`
+  (with `role_cleanup_offset`). The offset `n₀ = u₀ − x(σ)` is a fixed part of each role readout, and only the
+  perturbation `e` is bounded. Every `u₀ + e` with `‖e‖ < min(δ_c, δ_h)` gets exact clean-up and the code point's
+  decision, where:
+  - `δ_c = min_{s,a} (‖d_a‖²/2 − ⟨M_s n₀, d_a⟩)/‖M_sᵀ d_a‖` is `u₀`'s half-space clean-up slack;
+  - `δ_h = min_v ⟨u₀, U_t − U_v⟩/‖U_t − U_v‖` is its host slack.
+  - With `nearest_iff_halfspace` and the pairwise iff, this gives exact per-context certificates plus a ball of
+    robustness around each.
 
 *(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); a fit-error bound off the
-evaluated contexts (T5(b)'s premise); a certificate for the
-directions GPT-2's clean-up noise actually takes (the per-context half-space check is exact, but has not been run as
-a verdict). The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
+evaluated contexts (T5(b)'s premise); certificates for **unseen** contexts (the per-context certificates and their
+neighbourhoods need the observed residual). The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
 tag ledger is authoritative.
 
 *(empirical)*, with no bearing on any theorem above:
@@ -854,6 +866,17 @@ tag ledger is authoritative.
     region's nearest faces, so **no ball certificate explains the recovery**. A per-context half-space check would,
     exactly, as with #135's pairwise substitution check.
   - Disclosed: a first run stalled on a system suspend and was restarted with the same frozen script.
+- **pil `docs/notes/halfspace_verdict_{prereg,outcome}.md` (#141), pre-registered, with a disclosure-only addendum;
+  i-orca#34 merged before the run.** Per-context Soufflé verdicts built from the two iffs, plus certified
+  neighbourhoods around observed residuals. #139's setup, fresh seeds.
+  - **H1 (verification) passes:** the verdicts equal measured clean-up exactness and host agreement on all 27 fits
+    (0 mismatches, 0 ties).
+  - **H2 passes:** full per-context coverage is **0.666** (SVO `d_F=32`, `mse`) and **0.693** (`t6`). Every
+    code-centred ball covered none (#139, #140); this is the exact-versus-uniform pattern of #135 again.
+  - **H3 passes** in all 3 eligible cells (`cert` narrowly: 0.0104 vs 0.01). The certified neighbourhoods have median
+    `ρ_loc ≈ 0.17–0.18`, about 2.6% of `‖n‖`; all 173,460 sampled perturbations held.
+  - Clean-up is the binding slack (`δ_c ≈ 0.20` vs `δ_h ≈ 0.46–0.48`). LIST still has no exact clean-up.
+  - Not claimed: unseen contexts. The neighbourhoods certify perturbations of observed residuals.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.
