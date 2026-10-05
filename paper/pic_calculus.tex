@@ -607,7 +607,10 @@ one structure, differing only in nuisance tokens. Because the certificate's cond
 in the residual, a class is certified on the convex hull of its residuals if and only if every member is \proved{}.
 That gives the ceiling for any such bound. With eight sentence-initial time phrases as nuisance, the ceiling is about
 $15\%$ of held-out classes, or $23\%$ of those whose decision is phrase-invariant \empirical{}. Whether a sound bound
-computed through the model approaches that ceiling remains \open{}.
+computed through the model approaches that ceiling is doubtful. In an exploratory test, interval bound propagation
+through GPT-2 was vacuous by about $10^{149}$. Even the tightest possible box, the exact coordinate ranges of the real
+residuals, certified no class with eight or more nuisance options, while their hull certified all of them
+\empirical{}. Interval methods are therefore ruled out, and relational ones remain \open{}.
 
 A pre-registered follow-up compiled the certificate-trained fit to weighted Datalog facts and ran it in Soufflé
 alone, behind $n$-gram and idiom layers. It added no certified coverage of GPT-2 small on either task
