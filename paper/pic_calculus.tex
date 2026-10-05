@@ -602,7 +602,12 @@ subject--verb--object contexts at $d_F=32$ on GPT-2 small, where every ball cent
 On a finite template the domain can simply be enumerated. Applied to all $24{,}960$ subject--verb--object
 contexts, the per-context certificate covers about two-thirds of the domain, including filler combinations the
 substitute never saw, at the same rate as held-out ones \empirical{}. No single fit covers the whole domain.
-Certifying contexts on which the model itself has not been run remains \open{}.
+Certifying contexts on which the model itself has not been run requires a bound over a set of contexts that share
+one structure, differing only in nuisance tokens. Because the certificate's conditions are strict linear inequalities
+in the residual, a class is certified on the convex hull of its residuals if and only if every member is \proved{}.
+That gives the ceiling for any such bound. With eight sentence-initial time phrases as nuisance, the ceiling is about
+$15\%$ of held-out classes, or $23\%$ of those whose decision is phrase-invariant \empirical{}. Whether a sound bound
+computed through the model approaches that ceiling remains \open{}.
 
 A pre-registered follow-up compiled the certificate-trained fit to weighted Datalog facts and ran it in Soufflé
 alone, behind $n$-gram and idiom layers. It added no certified coverage of GPT-2 small on either task

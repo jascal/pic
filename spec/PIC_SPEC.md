@@ -1,8 +1,13 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.13). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.14). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.14 (2026-10-05)** — records i-orca #35 and pil #143. *Proved* (`PIC_Cleanup.thy`): hull certificates.
+> Strict affine conditions survive convex combination (§5.8). *Empirical*, pre-registered: the **ceiling** for any
+> model-side (set-level) certificate over nuisance classes, under #141's certificate, is about 15% of σ-classes (23% of
+> the decision-stable ones). No bound is computed (§5.8).
+>
 > **v0.3.13 (2026-10-05)** — records pil #142. *Empirical*, pre-registered: by exhaustion over the **whole** finite
 > SVO template domain (24,960 contexts), about two-thirds of contexts are certified per context. Never-sampled filler
 > combinations certify like held-out ones. No fit certifies the whole domain (§5.8).
@@ -801,10 +806,18 @@ product with another element, as in §5.3.
   - `δ_h = min_v ⟨u₀, U_t − U_v⟩/‖U_t − U_v‖` is its host slack.
   - With `nearest_iff_halfspace` and the pairwise iff, this gives exact per-context certificates plus a ball of
     robustness around each.
+- **`hull_certified_conditions`** *(proved)* — **hull certificates** (with `convex_strict_affine`). Strict affine
+  inequalities in `u` that hold at every residual of a finite family hold at every convex combination.
+  - The clean-up slacks and the host agreement margins are of this form. So a class whose every residual is
+    certified has its whole convex hull certified.
+  - Any sound set-level bound must contain the residuals, so the hull-certified share is the **ceiling** for any
+    such bound.
 
 *(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); a fit-error bound off the
 evaluated contexts (T5(b)'s premise); certificates for contexts the **host** has not been run on (per-context
-certificates, their neighbourhoods and finite-domain exhaustion all need the observed residual); domain-wide
+certificates, their neighbourhoods and finite-domain exhaustion all need the observed residual; a computable
+set-level bound through the host near the hull ceiling is unknown, and only pays off for nuisance sets larger than
+its cost); domain-wide
 equivalence on a finite template (no TPR fit reaches it). The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
 tag ledger is authoritative.
 
@@ -896,6 +909,18 @@ tag ledger is authoritative.
     the intersection of the six `d_F=32` `mse`/`t6` fits covers 34.3%. The binding constraint is the conjunction of
     clean-up and agreement.
   - Not claimed: host-compute savings (exhaustion runs GPT-2 on every context), or anything outside the template.
+- **pil `docs/notes/nuisance_hull_{prereg,outcome}.md` (#143), pre-registered, with exploration disclosed and
+  thresholds set after it; i-orca#35 merged before the run.** σ-classes are the 8 sentence-initial time-phrase variants
+  of one σ = (S, V, O). The phrase is **nuisance**: the substitute ignores it, so all 8 share one code point. A class is
+  hull-certified iff all 8 variants pass #141's certificate.
+  - **Ceiling (`t6`, `d_F=32`):** 0.151 [0.131, 0.172] of held-out classes, and 0.232 [0.201, 0.265] of the 65% whose
+    GPT-2 decision is phrase-invariant. `mse` (0.071 / 0.110) and `cert` (0.014 / 0.021) are lower. H1/H2 pass,
+    best read as a replication under fresh seeds.
+  - **Certification is strongly correlated across variants:** the hull share is 28–134× the independence baseline
+    `F_cov⁸` for `t6`.
+  - **The 65% cap** is a host-stability cap of this certificate and this nuisance. Adjectives, which GPT-2 copies into
+    its prediction, gave 0.
+  - **No bound is computed.** Whether a sound bound through GPT-2 can approach the hull is *(open)*.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.
