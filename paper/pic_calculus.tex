@@ -619,6 +619,17 @@ $\|(PW-I)T\|\le\varepsilon\|T\|$ degrades the clean-up radius by at most $\varep
 structure tensors are compressed into $768$ dimensions, the structures were not recoverable at all, so no context
 was certified, even though the model agreed with the code point on most of them \empirical{}.
 
+A different route certifies a product rather than the model. A small transformer student over GPT-2's frozen
+embeddings was trained with a worst-case loss over the box of sixteen nuisance words' embeddings. Its interval bound
+is then a sound certificate that the student's decision ignores the nuisance word \empirical{}. With gradient
+clipping the training is stable and the student is as faithful to GPT-2 as an uncertified one, but it certifies the
+trained words on almost every sentence. About $31\%$ of those certificates assert an invariance GPT-2 lacks, and none
+extends to unseen nuisance words \empirical{}. A separate gate that never sees the nuisance position, and so is
+invariant to it by construction, decides where to issue the certificate. On about a fifth of sentences it issued
+certificates of which $5\%$ were wrong about GPT-2 \empirical{}. A calibrated version (Learn-then-Test) failed its
+pre-registered test, because its five seeds shared one calibration split. Random re-splits indicate that the
+procedure itself is unbiased, so a distribution-free bound on that error rate remains \open{}.
+
 A pre-registered follow-up compiled the certificate-trained fit to weighted Datalog facts and ran it in Soufflé
 alone, behind $n$-gram and idiom layers. It added no certified coverage of GPT-2 small on either task
 \empirical{}: on the subject--verb--object probe it agreed on $468$ of the $469$ contexts where it fired, and one
