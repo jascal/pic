@@ -1,8 +1,14 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.15). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.16). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.16 (2026-10-05)** — records i-orca #36 and pil #145. *Proved* (`PIC_Cleanup.thy`): T4(c), clean-up
+> through an approximate decoder (no left inverse needed), with a degraded radius `ρ_ε` (§5.8). *Empirical*,
+> pre-registered: LIST `d_F=32` (960 → 768) is still not certifiable, because compression destroys clean-up. The
+> degraded radius is vacuous on these substitutes, while the exact per-context check still works where `W` is
+> injective (§5.8).
+>
 > **v0.3.15 (2026-10-05)** — records pil #144 (**exploratory**). A sound interval bound through GPT-2 is vacuous by
 > about 10¹⁴⁹, and even the tightest possible box certifies no nuisance class for k ≥ 8 while the hull certifies all.
 > Model-side certificates are not viable with interval methods; relational methods are untested (§5.8).
@@ -816,8 +822,17 @@ product with another element, as in §5.3.
     certified has its whole convex hull certified.
   - Any sound set-level bound must contain the residuals, so the hull-certified share is the **ceiling** for any
     such bound.
+- **`compressed_cleanup_certified`** *(proved)* — **T4(c), compressed binding,** in decoder form (with
+  `compression_offset_bound` and `compressed_eps0_left_inverse`).
+  - For a linear decoder `P` with `P·W ≠ I`, `P(u − b₀) = T(σ) + E(σ) + P·n`, where `E(σ) = (P·W − I)T(σ)` is a fixed
+    per-σ compression error.
+  - If `‖E(σ)‖ ≤ ε‖T(σ)‖`, each half-space slack loses at most `ε‖T‖‖w_s‖‖d_a‖`, giving
+    `ρ_ε = min_{s,a} (‖d_a‖²/2 − ⟨c_s, d_a⟩ − ε‖T‖‖w_s‖‖d_a‖)/‖M_sᵀd_a‖`, which is at least
+    `ρ_dir − ε‖T‖‖w_s‖‖d_a‖/‖q‖`.
+  - `ε = 0` under a left inverse recovers `cleanup_certified_directional`.
+  - The work package's near-isometry phrasing of (c) is replaced by this decoder form, which is what clean-up needs.
 
-*(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); a fit-error bound off the
+*(open)*: T2's frame-operator tightness; decodable substitutes when `W` is not injective (T4(c) is proved, but LIST `d_F=32` substitutes are not decodable); a fit-error bound off the
 evaluated contexts (T5(b)'s premise); certificates for contexts the **host** has not been run on (per-context
 certificates, their neighbourhoods and finite-domain exhaustion all need the observed residual; a computable
 set-level bound through the host near the hull ceiling is unknown: interval methods are ruled out by pil #144, and
@@ -938,6 +953,15 @@ tag ledger is authoritative.
     (92, 74, 70). The residuals vary along correlated directions that a box cannot follow.
   - **Verdict:** model-side certificates are not viable with interval methods, either in propagation or in the
     domain. Relational methods are *(open)* and doubtful at 12 layers.
+- **pil `docs/notes/compressed_cleanup_{prereg,outcome}.md` (#145), pre-registered, with a disclosure-only
+  addendum.** T4(c) applied with a ridge decoder (`λ = 10⁻³σ_max²`) to LIST `d_F=32` (960 → 768, excluded since
+  #139) and to SVO `d_F=32` as a control. Fresh seeds; 18 fits.
+  - **H1 fails:** per-context coverage is **0** in all 9 LIST fits. The compression error is large (median `ε`
+    0.61–0.78), so clean-up is never exact, although GPT-2 agrees with the code point on 71–98% of contexts. Decoding
+    is the bottleneck: nothing in the training keeps `T(σ)` in `W`'s row space.
+  - **SVO control:** the exact per-context check certifies 0.56 (`mse`) and 0.62 (`t6`) through the ridge decoder.
+  - **The degraded radius `ρ_ε ≤ 0` for every context in every cell,** even at `ε` ≈ 0.08. The worst-case
+    (Cauchy–Schwarz) term discards the error's direction, as in #138/#140. The exact per-context check needs no `ε`.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.
