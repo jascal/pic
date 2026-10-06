@@ -1,8 +1,14 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.17). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.18). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.18 (2026-10-06)** — records pil #151, the corrected re-test of #149. *Empirical*, pre-registered. Over 1,000
+> independent calibration draws, scored on a separate 6,000-class audit set, the Learn-then-Test threshold's false-
+> certificate rate exceeded α = 0.10 on **6.8%** of draws, inside δ = 0.10. **The calibrated bound for the gated
+> student certificate holds on this task.** The price is coverage: 17.7% of sentences, and no issue at all in 33% of
+> draws. Both miss their pre-registered bars, because coverage is bounded by gate quality (§5.8).
+>
 > **v0.3.17 (2026-10-06)** — records pil #146–#149, a new direction: **certifiable by construction.** A small student
 > is the product. It carries a sound interval (IBP) certificate of its own invariance to a nuisance token, and agreement
 > with GPT-2 is measured (§5.8). All four studies are *empirical* and pre-registered:
@@ -848,9 +854,9 @@ certificates, their neighbourhoods and finite-domain exhaustion all need the obs
 set-level bound through the host near the hull ceiling is unknown: interval methods are ruled out by pil #144, and
 relational ones (zonotope, CROWN) are untested; any such bound only pays off for nuisance sets larger than its cost);
 domain-wide
-equivalence on a finite template (no TPR fit reaches it); a pre-registered demonstration that a calibrated
-(Learn-then-Test) bound holds for the gated student certificate (pil #149 failed its test on a shared split);
-student certificates over nuisance words outside the training set. The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
+equivalence on a finite template (no TPR fit reaches it); calibrated student certificates at useful coverage (pil
+#151's bound holds but issues on about 18% of sentences; coverage is bounded by gate quality); student certificates
+over nuisance words outside the training set; a kernel-checked proof of the Learn-then-Test fixed-sequence lemma. The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
 tag ledger is authoritative.
 
 *(empirical)*, with no bearing on any theorem above:
@@ -1005,9 +1011,21 @@ tag ledger is authoritative.
     - Post-hoc re-splits (exploratory) show the calibration estimate unbiased, and swapping the halves reverses the
       gap.
     - When it issues, coverage is about twice #148's, at the weaker α.
-  - **Status:** gated certificates are right about GPT-2 at a measured rate, `empirical`. A calibrated bound on that
-    rate is not yet shown, *(open)*. Certificates over nuisance words outside the training set are *(open)*, since a
-    stable student certifies none.
+  - **#151 (H1 passes, H2 and H3 fail): the corrected re-test of #149.**
+    - Design: 200 independent calibration draws per seed (1,800 from a 6,000-class pool), each threshold scored on a
+      separate 6,000-class audit set, with the grid starting at the train quantile 0.80. Seeds 50–54.
+    - **The violation rate** (audit false-certificate rate > α) was **0.068** pooled over 1,000 draws (bar ≤ 0.15;
+      δ = 0.10). Per seed it ranged 0.000–0.150; draws within a seed share one pool.
+    - **When a draw issued:** false certificates 0.083, faithful 0.908.
+    - **Coverage 0.177 (bar ≥ 0.25); non-issuance 0.330 (bar ≤ 0.10).**
+    - The gates were weaker than #148's (AUC 0.748–0.761, against 0.775–0.792). Their precision near the top of the
+      score range sits close to 1 − α, which leaves the binomial test little room.
+  - **Status:**
+    - A gated student certificate whose rate of being wrong about GPT-2 is **controlled** by a calibrated
+      (Learn-then-Test) bound is `empirical` on this task, template and nuisance position: the bound held on 93.2% of
+      draws at α = δ = 0.10.
+    - The guarantee is the cited LTT theorem, not machine-checked.
+    - Useful coverage under it, and certificates over nuisance words outside the training set, are *(open)*.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.
