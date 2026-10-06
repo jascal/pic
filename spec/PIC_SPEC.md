@@ -1,8 +1,18 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.16). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.17). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.17 (2026-10-06)** — records pil #146–#149, a new direction: **certifiable by construction.** A small student
+> is the product. It carries a sound interval (IBP) certificate of its own invariance to a nuisance token, and agreement
+> with GPT-2 is measured (§5.8). All four studies are *empirical* and pre-registered:
+> - #146 fails: IBP training collapses, and certifies invariance everywhere;
+> - #147: gradient clipping removes the collapse, but a stable student certifies exactly the trained words and is
+>   wrong about GPT-2 on about 31%;
+> - #148 passes: a word-blind gate issues the certificate on about 20% of sentences, and 5% of those are wrong;
+> - #149 fails its pre-registered test of a calibrated (Learn-then-Test) bound, because all seeds shared one
+>   calibration split. Post-hoc re-splits show the procedure unbiased.
+>
 > **v0.3.16 (2026-10-05)** — records i-orca #36 and pil #145. *Proved* (`PIC_Cleanup.thy`): T4(c), clean-up
 > through an approximate decoder (no left inverse needed), with a degraded radius `ρ_ε` (§5.8). *Empirical*,
 > pre-registered: LIST `d_F=32` (960 → 768) is still not certifiable, because compression destroys clean-up. The
@@ -838,7 +848,9 @@ certificates, their neighbourhoods and finite-domain exhaustion all need the obs
 set-level bound through the host near the hull ceiling is unknown: interval methods are ruled out by pil #144, and
 relational ones (zonotope, CROWN) are untested; any such bound only pays off for nuisance sets larger than its cost);
 domain-wide
-equivalence on a finite template (no TPR fit reaches it). The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
+equivalence on a finite template (no TPR fit reaches it); a pre-registered demonstration that a calibrated
+(Learn-then-Test) bound holds for the gated student certificate (pil #149 failed its test on a shared split);
+student certificates over nuisance words outside the training set. The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
 tag ledger is authoritative.
 
 *(empirical)*, with no bearing on any theorem above:
@@ -962,6 +974,40 @@ tag ledger is authoritative.
   - **SVO control:** the exact per-context check certifies 0.56 (`mse`) and 0.62 (`t6`) through the ridge decoder.
   - **The degraded radius `ρ_ε ≤ 0` for every context in every cell,** even at `ε` ≈ 0.08. The worst-case
     (Cauchy–Schwarz) term discards the error's direction, as in #138/#140. The exact per-context check needs no `ε`.
+- **pil `certified_student` / `stable_student` / `conditional_certificate` / `ltt_certificate` (#146–#149):
+  certifiable by construction.** All four are pre-registered, with exploratory probes disclosed. **Framing:** the
+  product is a student, and its certificates prove properties of the student, not of GPT-2.
+  - **Setup:**
+    - task: GPT-2 small's next-token decision on the SVO template with one sentence-initial nuisance word (23
+      single-token options, position-aligned; 16 seen in training, 7 held out);
+    - student: 2 layers, `d = 128`, no LayerNorm, over GPT-2's frozen embeddings, trained with a worst-case
+      cross-entropy over the box of the seen words' embeddings;
+    - certificate: sound IBP on the student, in float32, sound up to rounding.
+  - **#146 (H1–H3 fail):** IBP training is unstable (one of three seeds collapsed). The healthy seeds certified the
+    seen words on about 99% of classes, against GPT-2's 70.8% seen-constancy, so 23–32% of certificates are wrong
+    about GPT-2.
+  - **#147 (H1–H3 pass, H4 fails, as the disclosed probe predicted):**
+    - gradient-norm clipping at 1.0 removes the collapse (0 of 5 seeds, against 4 of 5 unclipped), at no cost in
+      faithfulness;
+    - but the stable student certifies **exactly** the trained word set (`cert16` ≈ 1, `cert23` = 0);
+    - its false-certificate rate (0.312) equals the share of classes where GPT-2 depends on the word.
+  - **#148 (H1–H3 pass):** a **word-blind gate** decides where to issue the stable student's certificate. The gate is
+    the same architecture with the nuisance position removed, so it is invariant to the word by construction, and its
+    threshold is set on validation.
+    - Issued on 20.5% of test classes (narrowly over the 0.20 bar; per seed 0.095–0.303), with a false-certificate
+      rate of 0.050 (ungated: 0.264) and 0.943 faithful.
+    - The issued decisions match GPT-2 on the held-out words 0.97 of the time (extrapolation, not certified).
+  - **#149 (H1 fails, H2 passes, H3 fails):** Learn-then-Test calibration (α = δ = 0.10).
+    - 4 of 5 seeds exceeded α on test (0.112–0.126), and one seed issued nothing (the fixed-sequence test failed at
+      the top of its grid).
+    - All seeds shared one calibration/test split, so "at most 1 of 5" assumed independence the design did not
+      provide.
+    - Post-hoc re-splits (exploratory) show the calibration estimate unbiased, and swapping the halves reverses the
+      gap.
+    - When it issues, coverage is about twice #148's, at the weaker α.
+  - **Status:** gated certificates are right about GPT-2 at a measured rate, `empirical`. A calibrated bound on that
+    rate is not yet shown, *(open)*. Certificates over nuisance words outside the training set are *(open)*, since a
+    stable student certifies none.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.
