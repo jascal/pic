@@ -612,6 +612,13 @@ through GPT-2 was vacuous by about $10^{149}$. Even the tightest possible box, t
 residuals, certified no class with eight or more nuisance options, while their hull certified all of them
 \empirical{}. Interval methods are therefore ruled out, and relational ones remain \open{}.
 
+When the substitute's encoder $W$ is not injective, clean-up can still be certified through any linear decoder $P$.
+The compression error $(PW-I)T(\sigma)$ is a fixed offset in each role readout, and a bound
+$\|(PW-I)T\|\le\varepsilon\|T\|$ degrades the clean-up radius by at most $\varepsilon\|T\|\|w_s\|\|d_a\|/\|M_s^{\top}d_a\|$
+\proved{}. In practice that worst-case radius was vacuous on every substitute tested. On a task whose $960$-dimensional
+structure tensors are compressed into $768$ dimensions, the structures were not recoverable at all, so no context
+was certified, even though the model agreed with the code point on most of them \empirical{}.
+
 A pre-registered follow-up compiled the certificate-trained fit to weighted Datalog facts and ran it in Soufflé
 alone, behind $n$-gram and idiom layers. It added no certified coverage of GPT-2 small on either task
 \empirical{}: on the subject--verb--object probe it agreed on $468$ of the $469$ contexts where it fired, and one
