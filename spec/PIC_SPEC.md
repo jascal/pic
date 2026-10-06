@@ -1,8 +1,12 @@
 # PIC: Projective Incidence Calculus — Definition and Semantics
 
-**Status:** canonical specification (v0.3.14). This document defines PIC precisely enough to serve all
+**Status:** canonical specification (v0.3.15). This document defines PIC precisely enough to serve all
 three repos of the program at once:
 
+> **v0.3.15 (2026-10-05)** — records pil #144 (**exploratory**). A sound interval bound through GPT-2 is vacuous by
+> about 10¹⁴⁹, and even the tightest possible box certifies no nuisance class for k ≥ 8 while the hull certifies all.
+> Model-side certificates are not viable with interval methods; relational methods are untested (§5.8).
+>
 > **v0.3.14 (2026-10-05)** — records i-orca #35 and pil #143. *Proved* (`PIC_Cleanup.thy`): hull certificates.
 > Strict affine conditions survive convex combination (§5.8). *Empirical*, pre-registered: the **ceiling** for any
 > model-side (set-level) certificate over nuisance classes, under #141's certificate, is about 15% of σ-classes (23% of
@@ -816,8 +820,9 @@ product with another element, as in §5.3.
 *(open)*: T2's frame-operator tightness; compressed binding (near-isometric `W`); a fit-error bound off the
 evaluated contexts (T5(b)'s premise); certificates for contexts the **host** has not been run on (per-context
 certificates, their neighbourhoods and finite-domain exhaustion all need the observed residual; a computable
-set-level bound through the host near the hull ceiling is unknown, and only pays off for nuisance sets larger than
-its cost); domain-wide
+set-level bound through the host near the hull ceiling is unknown: interval methods are ruled out by pil #144, and
+relational ones (zonotope, CROWN) are untested; any such bound only pays off for nuisance sets larger than its cost);
+domain-wide
 equivalence on a finite template (no TPR fit reaches it). The work package is i-orca `examples/pic_binding/PROPOSAL.md`, and its
 tag ledger is authoritative.
 
@@ -921,6 +926,18 @@ tag ledger is authoritative.
   - **The 65% cap** is a host-stability cap of this certificate and this nuisance. Adjectives, which GPT-2 copies into
     its prediction, gave 0.
   - **No bound is computed.** Whether a sound bound through GPT-2 can approach the hull is *(open)*.
+- **pil `docs/notes/ibp_feasibility_exploratory.md` (#144), EXPLORATORY, not pre-registered.** This is the feasibility
+  of study (2): a sound bound computed through GPT-2.
+  - **Setup:** the nuisance is one sentence-initial token (23 single-token "Word," options, position-aligned); 100
+    σ-classes; k ∈ {2, 8, 23}. Interval bound propagation (IBP) runs through all 12 blocks (interval LayerNorm,
+    attention with an interval softmax, GELU). The primitives are tested for soundness by sampling.
+  - **Sanity:** k = 1 equals the exact forward pass (7 × 10⁻¹⁴), and every residual is contained (300/300).
+  - **IBP is vacuous by about 10¹⁴⁹:** the box grows about 10¹² per layer, and it certifies 0 classes at every k.
+  - **The box domain itself fails.** The tightest possible box (the exact coordinate ranges of the real residuals)
+    certifies host agreement for 35/92 classes at k = 2 and **0** at k = 8 and k = 23, while the hull certifies all
+    (92, 74, 70). The residuals vary along correlated directions that a box cannot follow.
+  - **Verdict:** model-side certificates are not viable with interval methods, either in propagation or in the
+    domain. Relational methods are *(open)* and doubtful at 12 layers.
 - **lm-sae `docs/TPR_SYSTEMATICITY_PREREG.md` (#234), pre-registered.** GPT-2 small's binding at sentence-final
   periods is conjunctive, not systematic: the paper's withheld-pair test fails, and SAE latents are mostly
   conjunctive.
